@@ -17,16 +17,24 @@ test('maplibre client is self-hosted, risk-null-safe and labels coordinate accur
   assert.match(js, /\/api\/v1\/situation-center\/bootstrap/);
   assert.match(js, /unavailable[^\n]{0,80}neutral|neutral[^\n]{0,80}unavailable/);
   assert.match(js, /locationAccuracy/);
-  assert.match(js, /https:\/\/tile\.openstreetmap\.org\/\{z\}\/\{x\}\/\{y\}\.png/);
-  assert.doesNotMatch(js, /\{a-c\}\.tile\.openstreetmap\.org/);
-  assert.match(js, /pitch\s*:\s*(5[0-9]|60)/);
   assert.doesNotMatch(js, /unpkg|jsdelivr|cdnjs/i);
 });
 
-test('CSP permits same-origin MapLibre worker and OSM tile fetches without third-party script/style CDN', () => {
+test('default situation map is a dark vector basemap with real building extrusion', () => {
+  const js = readFileSync(clientUrl, 'utf8');
+  assert.match(js, /https:\/\/tiles\.openfreemap\.org\/planet/);
+  assert.match(js, /type\s*:\s*['"]vector['"]/);
+  assert.match(js, /source-layer['"]?\s*:\s*['"]building['"]/);
+  assert.match(js, /fill-extrusion/);
+  assert.match(js, /render_height|render_min_height/);
+  assert.match(js, /zoom\s*:\s*(?:12(?:\.\d+)?|13(?:\.\d+)?|14(?:\.\d+)?)/);
+  assert.match(js, /pitch\s*:\s*(?:5[8-9]|6\d)/);
+});
+
+test('CSP permits self-hosted MapLibre worker and approved OpenFreeMap vector fetches without script/style CDN', () => {
   const source = readFileSync(securityUrl, 'utf8');
   assert.match(source, /worker-src\s+'self'/);
-  assert.match(source, /connect-src\s+'self'[^;]*https:\/\/tile\.openstreetmap\.org/);
+  assert.match(source, /connect-src\s+'self'[^;]*https:\/\/tiles\.openfreemap\.org/);
   assert.doesNotMatch(source, /script-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
   assert.doesNotMatch(source, /style-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
 });
