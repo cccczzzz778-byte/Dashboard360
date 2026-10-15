@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs';
 const clientUrl = new URL('../../public/js/situation-center.js', import.meta.url);
 const securityUrl = new URL('../../src/security/http.ts', import.meta.url);
 const configUrl = new URL('../../src/situation-center/map-config.ts', import.meta.url);
+const operatorMapUrl = new URL('../../public/js/map.js', import.meta.url);
 
 test('maplibre client is self-hosted, risk-null-safe and labels coordinate accuracy', () => {
   assert.ok(existsSync(clientUrl), 'public/js/situation-center.js must exist');
@@ -27,4 +28,26 @@ test('CSP permits same-origin MapLibre worker and OSM tile fetches without third
   assert.match(source, /connect-src\s+'self'[^;]*https:\/\/\*\.tile\.openstreetmap\.org/);
   assert.doesNotMatch(source, /script-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
   assert.doesNotMatch(source, /style-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
+});
+
+test('panels use real values and share district/institution selection state', () => {
+  const js = readFileSync(clientUrl, 'utf8');
+  assert.match(js, /function\s+focusDistrict\s*\(/);
+  assert.match(js, /function\s+focusInstitution\s*\(/);
+  assert.match(js, /function\s+renderPanels\s*\(/);
+  assert.match(js, /situationSummary/);
+  assert.match(js, /situationRanking/);
+  assert.match(js, /situationAlerts/);
+  assert.match(js, /situationActivity/);
+  assert.match(js, /\/api\/v1\/situation-center\/trends/);
+  assert.match(js, /Ma’lumot yetarli emas/);
+  assert.match(js, /360° ochish/);
+  assert.doesNotMatch(js, /\|\|\s*0\b/);
+});
+
+test('normal dashboard accepts a stable institution deep link for existing 360 drawer', () => {
+  const js = readFileSync(operatorMapUrl, 'utf8');
+  assert.match(js, /URLSearchParams/);
+  assert.match(js, /get\(['"]institution['"]\)/);
+  assert.match(js, /SSB360\?\.openInstitution|SSB360\.openInstitution/);
 });
