@@ -5,55 +5,123 @@
 .view-mode-btn.active{color:#eafaf7;background:#15433f;box-shadow:0 0 0 1px #22675f inset}
 .view-mode-btn .mode-icon{font-size:12px;line-height:1}
 
-/* Light / office / projector mode */
-body[data-view-mode="light"]{color-scheme:light;--bg:#f3f6f9;--surface:#ffffff;--surface2:#f7f9fb;--surface3:#eef3f7;--line:#dce5ec;--line2:#c7d5df;--text:#163044;--muted:#6e8190;--shadow:0 18px 46px rgba(31,55,73,.10);background:#f3f6f9;color:#163044}
-body[data-view-mode="light"] .sidebar{background:#ffffff;border-color:#dce5ec;box-shadow:8px 0 30px rgba(33,57,74,.04)}
-body[data-view-mode="light"] .brand strong,body[data-view-mode="light"] .topbar h1,body[data-view-mode="light"] .card-head h2,body[data-view-mode="light"] .section-title h2{color:#173448}
-body[data-view-mode="light"] .brand span,body[data-view-mode="light"] .topbar p,body[data-view-mode="light"] .card-head p,body[data-view-mode="light"] .section-title p{color:#748897}
-body[data-view-mode="light"] .nav-item{color:#667d8e}
-body[data-view-mode="light"] .nav-item:hover{background:#f0f5f7;color:#173448}
-body[data-view-mode="light"] .nav-item.active{background:#e3f5f1;border-color:#b9dfd7;color:#126d62}
+/* Light / office / projector mode. This is a complete theme, not only a background swap. */
+body[data-view-mode="light"]{color-scheme:light;--bg:#f7f9fc;--surface:#ffffff;--surface2:#f8fafc;--surface3:#eef3f7;--line:#dbe5ec;--line2:#c7d5df;--text:#102a3a;--muted:#62798a;--shadow:0 14px 36px rgba(28,55,75,.08);background:#f7f9fc;color:#102a3a}
+body[data-view-mode="light"] .app-shell,body[data-view-mode="light"] .workspace{background:#f7f9fc;color:#102a3a}
+body[data-view-mode="light"] .sidebar{background:#ffffff;border-color:#dbe5ec;box-shadow:8px 0 30px rgba(33,57,74,.04)}
+body[data-view-mode="light"] .brand strong,body[data-view-mode="light"] .topbar h1,body[data-view-mode="light"] .card-head h2,body[data-view-mode="light"] .section-title h2{color:#102a3a}
+body[data-view-mode="light"] .brand span,body[data-view-mode="light"] .topbar p,body[data-view-mode="light"] .card-head p,body[data-view-mode="light"] .section-title p{color:#667d8e}
+body[data-view-mode="light"] .eyebrow{color:#087e70}
+body[data-view-mode="light"] .nav-item{color:#516b7d}
+body[data-view-mode="light"] .nav-item span{color:#6f899a}
+body[data-view-mode="light"] .nav-item:hover{background:#f0f5f7;color:#102a3a}
+body[data-view-mode="light"] .nav-item.active{background:#e2f4f0;border-color:#b7ddd5;color:#096f63}
+body[data-view-mode="light"] .nav-item.active span{color:#087e70}
 body[data-view-mode="light"] .sidebar-info{border-color:#e2e9ee}
-body[data-view-mode="light"] .topbar{background:rgba(255,255,255,.92);border-color:#dce5ec;box-shadow:0 8px 25px rgba(34,56,72,.04)}
+body[data-view-mode="light"] .sidebar-info strong{color:#173448}
+body[data-view-mode="light"] .sidebar-info small{color:#718697}
+body[data-view-mode="light"] .topbar{background:rgba(255,255,255,.96);border-color:#dbe5ec;box-shadow:0 8px 25px rgba(34,56,72,.04)}
 body[data-view-mode="light"] .timebox{border-color:#d6e0e7}
-body[data-view-mode="light"] .timebox span,body[data-view-mode="light"] .timebox strong{color:#657b8b}
-body[data-view-mode="light"] .btn.secondary{background:#fff;border-color:#ccd9e2;color:#4d6576}
-body[data-view-mode="light"] .summary-card,body[data-view-mode="light"] .card,body[data-view-mode="light"] .control-group,body[data-view-mode="light"] .section-card{background:#fff;border-color:#dce5ec;box-shadow:var(--shadow)}
-body[data-view-mode="light"] .summary-card strong,body[data-view-mode="light"] .summary-card small,body[data-view-mode="light"] .summary-card span{color:#173448}
-body[data-view-mode="light"] .summary-card span,body[data-view-mode="light"] .summary-card small{color:#748897}
+body[data-view-mode="light"] .timebox span,body[data-view-mode="light"] .timebox strong{color:#536d7e}
+body[data-view-mode="light"] .btn.secondary{background:#fff;border-color:#cbd8e1;color:#425f72}
+body[data-view-mode="light"] .btn.secondary:hover{background:#f4f8fa;border-color:#adc1cf;color:#173448}
+body[data-view-mode="light"] .summary-card,body[data-view-mode="light"] .card,body[data-view-mode="light"] .control-group,body[data-view-mode="light"] .section-card{background:#fff;border-color:#dbe5ec;box-shadow:var(--shadow)}
+body[data-view-mode="light"] .summary-card strong{color:#102a3a}
+body[data-view-mode="light"] .summary-card span,body[data-view-mode="light"] .summary-card small{color:#667d8e}
+body[data-view-mode="light"] .summary-icon.teal{background:#dff5f1;color:#087e70}
+body[data-view-mode="light"] .summary-icon.blue{background:#e2effd;color:#266ea8}
+body[data-view-mode="light"] .summary-icon.amber{background:#fff2d7;color:#986511}
+body[data-view-mode="light"] .summary-icon.red{background:#ffe6ea;color:#b44052}
 body[data-view-mode="light"] .card-head,body[data-view-mode="light"] .filters,body[data-view-mode="light"] .map-legend{border-color:#e0e8ee}
-body[data-view-mode="light"] .filters input,body[data-view-mode="light"] .filters select{background:#f8fafb;border-color:#d4e0e8;color:#173448}
-body[data-view-mode="light"] .institution{background:#f8fafb;border-color:#dce5ec;color:#173448}
-body[data-view-mode="light"] .institution:hover{background:#eff8f6;border-color:#9ed4ca}
-body[data-view-mode="light"] .institution-meta,body[data-view-mode="light"] .institution-location{color:#718797}
+body[data-view-mode="light"] .map-legend{background:#fff;color:#647b8c}
+body[data-view-mode="light"] .filters{background:#fff}
+body[data-view-mode="light"] .filters input,body[data-view-mode="light"] .filters select{background:#f8fafb;border-color:#d4e0e8;color:#102a3a}
+body[data-view-mode="light"] .filters input::placeholder{color:#8b9ca8}
+body[data-view-mode="light"] .institution{background:#f9fbfc;border-color:#dbe5ec;color:#102a3a}
+body[data-view-mode="light"] .institution:hover{background:#eef8f6;border-color:#9ed4ca}
+body[data-view-mode="light"] .institution strong{color:#173448}
+body[data-view-mode="light"] .institution .type{background:#e4f6f2;border-color:#b9ddd6;color:#087e70}
+body[data-view-mode="light"] .institution-meta,body[data-view-mode="light"] .institution-location{color:#667d8e}
 body[data-view-mode="light"] .control-group h3{color:#29495f}
-body[data-view-mode="light"] .module-chip{background:#f5f8fa;border-color:#d8e2e9;color:#607788}
-body[data-view-mode="light"] .module-chip:hover{background:#e9f7f4;border-color:#a9dcd3;color:#126d62}
-body[data-view-mode="light"] .integration-item{background:#f8fafb;border-color:#dce5ec;color:#173448}
+body[data-view-mode="light"] .module-chip{background:#f5f8fa;border-color:#d8e2e9;color:#516b7d}
+body[data-view-mode="light"] .module-chip:hover{background:#e9f7f4;border-color:#a9dcd3;color:#096f63}
+body[data-view-mode="light"] .integration-item{background:#f8fafb;border-color:#dbe5ec;color:#102a3a}
 body[data-view-mode="light"] .integration-item:hover{background:#eef8f6;border-color:#abd9d0}
+body[data-view-mode="light"] .integration-item span{color:#667d8e}
 body[data-view-mode="light"] .source-row{border-color:#e5ebef}
-body[data-view-mode="light"] .notice-bar{background:#f8fafb;border-color:#d8e3ea;color:#667d8d}
-body[data-view-mode="light"] .pill{background:#f2f6f8;border-color:#d5e1e8;color:#607989}
-body[data-view-mode="light"] .view-mode-control{background:#f3f6f8;border-color:#d5e1e8}
-body[data-view-mode="light"] .view-mode-btn{color:#60798a}
+body[data-view-mode="light"] .source-row strong{color:#173448}
+body[data-view-mode="light"] .source-row small{color:#667d8e}
+body[data-view-mode="light"] .notice-bar{background:#ffffff;border-color:#d8e3ea;color:#5d7586}
+body[data-view-mode="light"] .notice-bar strong{color:#29495f}
+body[data-view-mode="light"] .pill{background:#f2f6f8;border-color:#d5e1e8;color:#536d7e}
+body[data-view-mode="light"] .view-mode-control{background:#f3f6f8;border-color:#d5e1e8;box-shadow:none}
+body[data-view-mode="light"] .view-mode-btn{color:#597384}
 body[data-view-mode="light"] .view-mode-btn:hover{background:#e7eef2;color:#173448}
-body[data-view-mode="light"] .view-mode-btn.active{background:#dff3ef;color:#126d62;box-shadow:0 0 0 1px #b5ded6 inset}
+body[data-view-mode="light"] .view-mode-btn.active{background:#dff3ef;color:#087e70;box-shadow:0 0 0 1px #b5ded6 inset}
+body[data-view-mode="light"] .fallback-district{background:#f7fafb;border-color:#d5e1e8;color:#456174}
+body[data-view-mode="light"] .skeleton-list i{background:linear-gradient(90deg,#edf2f5,#f8fafb,#edf2f5);background-size:220% 100%}
+body[data-view-mode="light"] .status-badge,body[data-view-mode="light"] .source-badge{background:#eef3f6;border-color:#d4dfe6;color:#5e7585}
+body[data-view-mode="light"] .status-badge.configured,body[data-view-mode="light"] .source-badge.live{background:#e0f5ef;border-color:#b8dfd4;color:#087a68}
+body[data-view-mode="light"] .status-badge.browser-auth,body[data-view-mode="light"] .source-badge.imported{background:#e7f1fb;border-color:#c3d9ec;color:#276e9f}
+body[data-view-mode="light"] .status-badge.external,body[data-view-mode="light"] .source-badge.manual{background:#fff3d8;border-color:#ead8a7;color:#8d6618}
+body[data-view-mode="light"] .source-badge.error{background:#ffe5e9;border-color:#efbdc5;color:#a93c4d}
 
-body[data-view-mode="light"] .drawer-backdrop{background:rgba(18,37,51,.34)}
-body[data-view-mode="light"] .institution-drawer{background:#f4f7f9;border-color:#cbd9e2;color:#173448}
-body[data-view-mode="light"] .drawer-topbar,body[data-view-mode="light"] .drawer-commandbar,body[data-view-mode="light"] .module-navigation{background:#fff;border-color:#dbe5eb}
-body[data-view-mode="light"] .institution-header h2,body[data-view-mode="light"] .module-summary h2{color:#173448}
-body[data-view-mode="light"] .institution-header p,body[data-view-mode="light"] .module-summary p,body[data-view-mode="light"] .drawer-breadcrumb{color:#6e8393}
-body[data-view-mode="light"] .module-navigation button{color:#617989}
-body[data-view-mode="light"] .module-navigation button:hover{background:#eff5f7;color:#173448}
-body[data-view-mode="light"] .module-navigation button.active{background:#dff3ef;border-color:#b8ddd6;color:#126d62}
-body[data-view-mode="light"] .module-category{color:#7890a0}
-body[data-view-mode="light"] .metric,body[data-view-mode="light"] .drawer-kpi-card{background:#fff;border-color:#dce5ec;color:#173448;box-shadow:0 8px 24px rgba(35,58,74,.05)}
-body[data-view-mode="light"] .metric .label,body[data-view-mode="light"] .metric-source-note{color:#718797}
-body[data-view-mode="light"] .metric .value.na{color:#91a3b0}
-body[data-view-mode="light"] .icon-btn{background:#fff;border-color:#d0dde6;color:#587080}
-body[data-view-mode="light"] .metric-dialog{background:#fff;border-color:#cbd9e2;color:#173448}
-body[data-view-mode="light"] .metric-dialog input{background:#f8fafb;border-color:#d4e0e8;color:#173448}
+/* Muassasa 360 light mode must override the professional dark !important layer. */
+body[data-view-mode="light"] .drawer-backdrop{background:rgba(30,48,60,.24)!important;backdrop-filter:blur(8px)!important}
+body[data-view-mode="light"] .institution-drawer{background:#f7f9fc!important;border-color:#d2dee7!important;color:#102a3a!important}
+body[data-view-mode="light"] .institution-drawer::before{background:radial-gradient(circle at 16% -30%,rgba(22,157,138,.08),transparent 46%),radial-gradient(circle at 82% -45%,rgba(76,164,255,.08),transparent 40%)!important}
+body[data-view-mode="light"] .institution-drawer .drawer-topbar{background:#ffffff!important;border-color:#dbe5ec!important;box-shadow:0 8px 24px rgba(34,56,72,.04)!important}
+body[data-view-mode="light"] .institution-header .eyebrow{color:#087e70!important}
+body[data-view-mode="light"] .institution-header h2{color:#102a3a!important}
+body[data-view-mode="light"] .institution-header p{color:#657d8e!important}
+body[data-view-mode="light"] .institution-drawer .icon-btn{background:#f7fafb!important;border-color:#cbd9e2!important;color:#466174!important}
+body[data-view-mode="light"] .drawer-commandbar{background:#f5f8fa!important;border-color:#dbe5ec!important;color:#617989!important}
+body[data-view-mode="light"] .drawer-breadcrumb{color:#617989!important}
+body[data-view-mode="light"] .drawer-breadcrumb strong{color:#173448!important}
+body[data-view-mode="light"] .drawer-breadcrumb span{color:#718797!important}
+body[data-view-mode="light"] .drawer-kpi-strip{background:#f7f9fc!important;border-color:#dbe5ec!important}
+body[data-view-mode="light"] .exec-kpi{background:#ffffff!important;border-color:#dbe5ec!important;box-shadow:0 8px 24px rgba(35,58,74,.05)!important}
+body[data-view-mode="light"] .exec-kpi .kpi-label{color:#667d8e!important}
+body[data-view-mode="light"] .exec-kpi .kpi-value{color:#102a3a!important}
+body[data-view-mode="light"] .exec-kpi .kpi-meta{color:#718797!important}
+body[data-view-mode="light"] .exec-kpi .kpi-icon{background:#e0f5ef!important;color:#087e70!important}
+body[data-view-mode="light"] .exec-kpi.blue .kpi-icon{background:#e5f0fc!important;color:#276ea5!important}
+body[data-view-mode="light"] .exec-kpi.amber .kpi-icon{background:#fff3d8!important;color:#8f6516!important}
+body[data-view-mode="light"] .exec-kpi.muted .kpi-icon{background:#edf2f5!important;color:#657d8e!important}
+body[data-view-mode="light"] .drawer-main{background:#f7f9fc!important}
+body[data-view-mode="light"] .institution-drawer .module-navigation{background:#ffffff!important;border-color:#dbe5ec!important;scrollbar-color:#c3d2dc transparent!important}
+body[data-view-mode="light"] .institution-drawer .module-category{background:#ffffff!important;color:#7890a0!important}
+body[data-view-mode="light"] .institution-drawer .module-navigation button{color:#536d7e!important}
+body[data-view-mode="light"] .institution-drawer .module-navigation button::before{border-color:#a9bdca!important;background:#eef3f6!important}
+body[data-view-mode="light"] .institution-drawer .module-navigation button:hover{background:#f0f5f7!important;color:#102a3a!important}
+body[data-view-mode="light"] .institution-drawer .module-navigation button.active{background:linear-gradient(90deg,#e3f5f1,#eef8f6)!important;border-color:#b8ddd6!important;color:#087669!important;box-shadow:inset 3px 0 0 #16a58f!important}
+body[data-view-mode="light"] .institution-drawer .module-navigation button.active::before{background:#16a58f!important;border-color:#16a58f!important;box-shadow:0 0 10px rgba(22,165,143,.2)!important}
+body[data-view-mode="light"] .institution-drawer .module-workspace{background:#f7f9fc!important;scrollbar-color:#c3d2dc transparent!important}
+body[data-view-mode="light"] .institution-drawer .module-summary{border-color:#dbe5ec!important}
+body[data-view-mode="light"] .institution-drawer .module-summary h2{color:#102a3a!important}
+body[data-view-mode="light"] .institution-drawer .module-summary p{color:#667d8e!important}
+body[data-view-mode="light"] .module-completeness strong{color:#405f72!important}
+body[data-view-mode="light"] .module-progress{background:#e2e9ee!important}
+body[data-view-mode="light"] .institution-drawer .metric{background:#ffffff!important;border-color:#dbe5ec!important;color:#102a3a!important;box-shadow:0 7px 22px rgba(35,58,74,.05)!important}
+body[data-view-mode="light"] .institution-drawer .metric:hover{background:#fbfdfd!important;border-color:#aac9c2!important;box-shadow:0 10px 28px rgba(35,58,74,.08)!important}
+body[data-view-mode="light"] .institution-drawer .metric::after{background:#c4d2dc!important}
+body[data-view-mode="light"] .institution-drawer .metric:has(.source-badge.live)::after{background:#20aa94!important}
+body[data-view-mode="light"] .institution-drawer .metric:has(.source-badge.manual)::after{background:#d9a63f!important}
+body[data-view-mode="light"] .institution-drawer .metric:has(.source-badge.imported)::after{background:#4a95d6!important}
+body[data-view-mode="light"] .institution-drawer .metric .label{color:#5f7889!important}
+body[data-view-mode="light"] .institution-drawer .metric .value{color:#102a3a!important}
+body[data-view-mode="light"] .institution-drawer .metric .value.na{color:#879aa7!important}
+body[data-view-mode="light"] .institution-drawer .metric .value small{color:#667d8e!important}
+body[data-view-mode="light"] .institution-drawer .metric-source-note{color:#718797!important}
+body[data-view-mode="light"] .institution-drawer .edit-metric{background:#e4f6f2!important;border-color:#b8ddd6!important;color:#087669!important}
+body[data-view-mode="light"] .institution-drawer .edit-metric:hover{background:#d8f0eb!important}
+body[data-view-mode="light"] .institution-drawer .empty{background:#ffffff!important;border-color:#cbd9e2!important;color:#667d8e!important}
+body[data-view-mode="light"] .metric-dialog{background:#ffffff;border-color:#cbd9e2;color:#102a3a;box-shadow:0 30px 90px rgba(29,48,62,.22)}
+body[data-view-mode="light"] .metric-dialog::backdrop{background:rgba(28,45,58,.25);backdrop-filter:blur(4px)}
+body[data-view-mode="light"] .metric-dialog label{color:#536d7e}
+body[data-view-mode="light"] .metric-dialog input{background:#f8fafb;border-color:#d4e0e8;color:#102a3a}
+body[data-view-mode="light"] .dialog-head h3{color:#102a3a}
+body[data-view-mode="light"] .dialog-note{color:#667d8e}
 
 /* Executive / TV wall mode */
 body[data-view-mode="tv"]{background:#04101a}
