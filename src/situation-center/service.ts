@@ -6,6 +6,7 @@ import type { StoredAlert } from '../alerts/repository.js';
 import type { IntegrationHealth } from '../integrations/repository.js';
 import { buildInstitutionModules } from '../domain/modules.js';
 import { mergeNamespacedMetrics } from '../domain/metric-namespace.js';
+import { resolveMapStyle, type MapStyleResolution } from './map-config.js';
 import type {
   SituationAlertSummary,
   SituationBootstrap,
@@ -39,6 +40,7 @@ export type SituationCenterDeps = {
   };
   alerts: { listActive(): Promise<StoredAlert[]> };
   integrations: { listHealth(now?: Date): Promise<IntegrationHealth[]> };
+  mapStyle?: MapStyleResolution;
 };
 
 const provinceWideRoles = new Set(['super_admin', 'executive', 'regional_specialist']);
@@ -81,7 +83,20 @@ function mapInstitution(institution: Institution, risk: StoredRisk | undefined |
   };
 }
 
+function configuredMapStyle(deps: SituationCenterDeps): MapStyleResolution {
+  if (deps.mapStyle) return deps.mapStyle;
+  return resolveMapStyle({
+    url: process.env.SITUATION_MAP_STYLE_URL,
+    allowedHosts: String(process.env.SITUATION_MAP_STYLE_ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean)
+  });
+}
+
 export function createSituationCenterService(deps: SituationCenterDeps) {
+  const mapStyle = configuredMapStyle(deps);
+
   async function buildScoped(principal: UserPrincipal, districtKey?: string): Promise<SituationBootstrap> {
     const allInstitutions = await deps.institutions.listAll();
     const scoped = filterInstitutionsForPrincipal(principal, allInstitutions)
@@ -116,9 +131,9 @@ export function createSituationCenterService(deps: SituationCenterDeps) {
 
     const summary: SituationSummary = {
       institutions: scoped.length,
-      doctors: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.doctors'))),
-      nurses: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.nurses'))),
-      beds: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'inpatient.beds'))),
+      doctors: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.doctors')),
+      nurses: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.nurses')),
+      beds: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'inpatient.beds')),
       dataCompleteness: institutions.some(item => item.dataCompleteness != null)
         ? Math.round(institutions.reduce((sum, item) => sum + (item.dataCompleteness ?? 0), 0) /
           institutions.filter(item => item.dataCompleteness != null).length)
@@ -141,7 +156,8 @@ export function createSituationCenterService(deps: SituationCenterDeps) {
       summary,
       rankings,
       alerts: alertSummary,
-      integrations
+      integrations,
+      mapStyle
     };
   }
 
