@@ -10,7 +10,7 @@ import { requireAuth } from './auth/middleware.js';
 import { buildInstitutionModules, metricExists, moduleDefinitions } from './domain/modules.js';
 import { audit } from './audit/log.js';
 import { catalogByDistrict, catalogInstitution, districts, institutionCatalog, integrations } from './catalog.js';
-import type { Institution } from './domain/institution.js';
+import type { Institution, InstitutionMetric } from './domain/institution.js';
 
 export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
@@ -131,7 +131,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
   app.get('/api/institutions/:id/summary', requireAuth(sessions), async (req, res) => {
     const institution = await findInstitution(String(req.params.id));
     if (!institution) return res.status(404).json({ code: 'not_found' });
-    let metrics = [];
+    let metrics: InstitutionMetric[] = [];
     if (pool) {
       try { await dbReady; metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
     }
@@ -141,7 +141,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
   app.get('/api/modules/:institutionId', requireAuth(sessions), async (req, res) => {
     const institution = await findInstitution(String(req.params.institutionId));
     if (!institution) return res.status(404).json({ code: 'not_found' });
-    let metrics = [];
+    let metrics: InstitutionMetric[] = [];
     if (pool) {
       try { metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
     }
