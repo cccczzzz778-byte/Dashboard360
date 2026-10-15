@@ -26,12 +26,13 @@ test('enterprise role set is explicit and stable', async () => {
 test('user repository hydrates scopes and rejects disabled users', async () => {
   if (!existsSync(repoUrl)) return assert.fail('src/users/repository.ts must exist');
   const { createUserRepository } = await import('../../src/users/repository.js');
+  const username = 'alice_scope_user';
   const calls: Array<{ sql: string; values?: unknown[] }> = [];
   const pool = {
     async query(sql: string, values?: unknown[]) {
       calls.push({ sql, values });
       if (/from users/i.test(sql) && /username/i.test(sql)) {
-        return { rows: [{ id: 'u1', username: 'district', passwordHash: 'scrypt$x$y', role: 'district_manager', isActive: true }] };
+        return { rows: [{ id: 'u1', username, passwordHash: 'scrypt$x$y', role: 'district_manager', isActive: true }] };
       }
       if (/from user_scopes/i.test(sql)) {
         return { rows: [{ districtKey: 'gijduvon', institutionId: null }] };
@@ -41,11 +42,11 @@ test('user repository hydrates scopes and rejects disabled users', async () => {
   } as any;
 
   const repo = createUserRepository(pool);
-  const user = await repo.findByUsername('district');
-  assert.equal(user?.username, 'district');
+  const user = await repo.findByUsername(username);
+  assert.equal(user?.username, username);
   assert.equal(user?.role, 'district_manager');
   assert.deepEqual(user?.scopes, [{ districtKey: 'gijduvon' }]);
-  assert.ok(calls.every(call => !call.sql.includes('district')), 'username must be passed as a SQL parameter');
+  assert.ok(calls.every(call => !call.sql.includes(username)), 'username must be passed as a SQL parameter');
 
   const disabledPool = {
     async query(sql: string) {
