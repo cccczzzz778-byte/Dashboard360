@@ -24,8 +24,7 @@ const integrationSeverity: Partial<Record<IntegrationHealthStatus, AlertSeverity
   degraded: 'warning',
   stale: 'warning',
   offline: 'critical',
-  auth_required: 'warning',
-  unavailable: 'info'
+  auth_required: 'warning'
 };
 
 export function deriveAlerts(input: AlertDerivationInput): AlertCandidate[] {
@@ -46,7 +45,6 @@ export function deriveAlerts(input: AlertDerivationInput): AlertCandidate[] {
   }
 
   for (const source of input.integrations) {
-    if (source.status === 'online') continue;
     const severity = integrationSeverity[source.status];
     if (!severity) continue;
     alerts.push({
