@@ -6,32 +6,31 @@ import { normalizeDistrictName } from './map/district-map.js';
 import { dashboardHtml } from './views/dashboard.js';
 import { loginHtml } from './views/login.js';
 import { SessionManager, hashPassword, verifyPassword } from './auth/session.js';
-import { requireAuth } from './auth/middleware.js';
+import { requireAuth, requireCsrf, requireRole, readSessionToken, sessionCookieName } from './auth/middleware.js';
 import { buildInstitutionModules, metricExists, moduleDefinitions } from './domain/modules.js';
 import { mergeNamespacedMetrics, namespacedMetricKey } from './domain/metric-namespace.js';
 import { audit } from './audit/log.js';
 import { catalogByDistrict, catalogInstitution, districts, institutionCatalog, integrations } from './catalog.js';
 import type { Institution, InstitutionMetric } from './domain/institution.js';
+import { securityHeaders, sameOriginGuard, requestFingerprint } from './security/http.js';
+import { LoginRateLimiter } from './security/rate-limit.js';
 
 export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
 }
 
-export function createServer(options: { pool?: Pool; sessionManager?: SessionManager } = {}) {
+export function createServer(options: { pool?: Pool; sessionManager?: SessionManager; loginLimiter?: LoginRateLimiter } = {}) {
   const app = express();
   app.disable('x-powered-by');
-  app.use((_req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline' https://unpkg.com; script-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
-    next();
-  });
+  app.set('trust proxy', 1);
+  app.use(securityHeaders);
+  app.use(sameOriginGuard);
   app.use(express.urlencoded({ extended: false, limit: '64kb' }));
   app.use(express.json({ limit: '64kb' }));
   app.use(express.static(resolvePublicDir(), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
 
   const sessions = options.sessionManager ?? new SessionManager();
+  const loginLimiter = options.loginLimiter ?? new LoginRateLimiter();
   const pool = options.pool ?? (process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : undefined);
   const repo = pool ? createInstitutionRepository(pool) : undefined;
   const dbReady = pool ? ensureSchema(pool, institutionCatalog).catch(error => {
@@ -84,28 +83,51 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
     const configuredUser = process.env.ADMIN_USERNAME ?? 'admin';
     const configuredHash = process.env.ADMIN_PASSWORD_HASH;
     const legacyPassword = process.env.ADMIN_PASSWORD;
-    let valid = req.body.username === configuredUser;
-    if (valid && configuredHash) valid = await verifyPassword(req.body.password ?? '', configuredHash);
-    else if (valid && legacyPassword) valid = req.body.password === legacyPassword;
+    const username = String(req.body.username ?? '').slice(0, 120);
+    const password = String(req.body.password ?? '').slice(0, 500);
+    const ipKey = req.ip || req.socket.remoteAddress || 'unknown';
+    const rate = loginLimiter.check(ipKey, username);
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(rate.retryAfterSeconds));
+      audit('login_throttled', { username: username || 'empty', client: requestFingerprint(req) });
+      return res.status(429).send(loginHtml('Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring.'));
+    }
+
+    let valid = username === configuredUser;
+    if (valid && configuredHash) valid = await verifyPassword(password, configuredHash);
+    else if (valid && process.env.NODE_ENV !== 'production' && legacyPassword) valid = password === legacyPassword;
     else valid = false;
-    if (!valid) return res.status(401).send(loginHtml('Login yoki parol xato'));
-    const token = sessions.create({ username: configuredUser });
-    audit('login', { username: configuredUser });
-    res.setHeader('Set-Cookie', `ssb360=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
+
+    if (!valid) {
+      loginLimiter.fail(ipKey, username);
+      audit('login_failed', { username: username || 'empty', client: requestFingerprint(req) });
+      return res.status(401).send(loginHtml('Login yoki parol xato'));
+    }
+
+    loginLimiter.success(ipKey, username);
+    const token = sessions.create({ username: configuredUser, role: 'admin' });
+    audit('login', { username: configuredUser, client: requestFingerprint(req) });
+    const cookieName = sessionCookieName();
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800; Priority=High${secure}`);
     res.redirect('/');
   });
+
   app.get('/logout', (req, res) => {
-    const token = /(?:^|;\s*)ssb360=([^;]+)/.exec(req.headers.cookie ?? '')?.[1];
+    const token = readSessionToken(req.headers.cookie ?? '');
     if (token) sessions.destroy(token);
-    res.setHeader('Set-Cookie', 'ssb360=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.append('Set-Cookie', `${sessionCookieName()}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
+    res.append('Set-Cookie', `ssb360=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
     res.redirect('/login');
   });
 
   app.get('/', requireAuth(sessions), (_req, res) => res.send(dashboardHtml()));
 
-  app.get('/api/bootstrap', requireAuth(sessions), async (_req, res) => {
+  app.get('/api/bootstrap', requireAuth(sessions), async (req, res) => {
     const institutions = await allInstitutions();
     const sources = sourceStates();
+    const session = (req as any).session;
     res.json({
       generatedAt: new Date().toISOString(),
       districts,
@@ -113,6 +135,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
       modules: moduleDefinitions,
       integrations,
       sources,
+      security: { csrfToken: session.csrfToken, role: session.role },
       summary: {
         institutions: institutions.length,
         districts: districts.length,
@@ -153,7 +176,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
     res.json({ institutionId: institution.id, modules: modulesFor(institution, metrics) });
   });
 
-  app.post('/api/admin/metrics', requireAuth(sessions), async (req, res) => {
+  app.post('/api/admin/metrics', requireAuth(sessions), requireRole('admin'), requireCsrf(sessions), async (req, res) => {
     if (!pool) return res.status(503).json({ code: 'database_unavailable' });
     const institutionId = String(req.body.institutionId ?? '').slice(0, 120);
     const moduleKey = String(req.body.moduleKey ?? '').slice(0, 80);
@@ -166,7 +189,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
     const value = rawValue == null || rawValue === '' ? null : String(rawValue).slice(0, 200);
     try {
       const saved = await upsertManualMetric(pool, { institutionId, metricKey: namespacedMetricKey(moduleKey, metricKey), value, unit });
-      audit('metric_upsert', { institutionId, moduleKey, metricKey });
+      audit('metric_upsert', { institutionId, moduleKey, metricKey, username: (req as any).session?.username });
       res.json({ ok: true, metric: saved });
     } catch (error: any) {
       console.error(JSON.stringify({ type: 'metric_upsert_error', message: error?.message ?? String(error) }));
