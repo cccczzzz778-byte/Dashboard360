@@ -21,6 +21,10 @@ import { securityHeaders, sameOriginGuard, requestFingerprint } from './security
 import { LoginRateLimiter, type LoginLimiter } from './security/rate-limit.js';
 import { RedisLoginRateLimiter } from './security/redis-rate-limit.js';
 import { checkReadiness } from './health/readiness.js';
+import { createRiskRepository } from './risk/repository.js';
+import { createAlertRepository } from './alerts/repository.js';
+import { createIntegrationRepository } from './integrations/repository.js';
+import { createEnterpriseRouter } from './enterprise/router.js';
 
 export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
@@ -127,6 +131,25 @@ export function createServer(options: {
   function requestPrincipal(req: express.Request) {
     return (req as any).principal ?? principalFromSession((req as any).session);
   }
+
+  const riskRepo = pool ? createRiskRepository(pool) : {
+    async listLatest() { return []; },
+    async latest(_institutionId: string) { return null; }
+  };
+  const alertRepo = pool ? createAlertRepository(pool) : {
+    async listActive() { return []; }
+  };
+  const integrationRepo = pool ? createIntegrationRepository(pool) : {
+    async listHealth() { return []; }
+  };
+
+  app.use('/api/v1', createEnterpriseRouter({
+    sessionBackend: sessions,
+    institutions: { listAll: allInstitutions, findById: findInstitution },
+    risk: riskRepo,
+    alerts: alertRepo,
+    integrations: integrationRepo
+  }));
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'buxoro-ssb-360' }));
 
