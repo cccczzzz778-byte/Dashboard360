@@ -2,6 +2,7 @@
   const $ = id => document.getElementById(id);
   const escape = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const state = { bootstrap:null, district:'', query:'', map:null, districtMarkers:new Map(), institutionLayer:null };
+  const deepLinkInstitution = new URLSearchParams(window.location.search).get('institution');
   const districtLabel = key => state.bootstrap?.districts.find(x => x.key === key)?.label ?? key;
 
   function tickClock() {
@@ -150,6 +151,9 @@
       state.bootstrap = await response.json();
       window.SSB360_STATE = state;
       renderSummary(); renderDistrictSelect(); renderGroups(); renderIntegrations(); renderSources(); initMap(); renderInstitutionList(); renderInstitutionMarkers(currentInstitutions()); wireUi();
+      if (deepLinkInstitution && state.bootstrap.institutions.some(item => item.id === deepLinkInstitution)) {
+        setTimeout(() => window.SSB360?.openInstitution(deepLinkInstitution), 0);
+      }
     } catch (error) {
       $('systemStatus').textContent = 'Yuklashda xato';
       $('institutionList').innerHTML = '<div class="empty">Dashboard ma’lumotlarini yuklab bo‘lmadi. Sahifani yangilang.</div>';
