@@ -4,9 +4,15 @@ import type { AlertCandidate } from './engine.js';
 export type StoredAlert = AlertCandidate & {
   id: number;
   status: 'open' | 'acknowledged' | 'resolved' | 'closed';
-  firstSeenAt: string;
-  lastSeenAt: string;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
 };
+
+function isoOrNull(value: unknown) {
+  if (value == null) return null;
+  const date = new Date(value as any);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
 
 function mapAlert(row: any): StoredAlert {
   return {
@@ -20,8 +26,8 @@ function mapAlert(row: any): StoredAlert {
     dedupKey: row.dedupKey,
     metadata: row.metadata ?? {},
     status: row.status,
-    firstSeenAt: new Date(row.firstSeenAt).toISOString(),
-    lastSeenAt: new Date(row.lastSeenAt).toISOString()
+    firstSeenAt: isoOrNull(row.firstSeenAt),
+    lastSeenAt: isoOrNull(row.lastSeenAt)
   };
 }
 
