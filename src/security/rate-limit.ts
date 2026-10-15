@@ -6,7 +6,13 @@ type LoginAttempt = {
 
 export type RateLimitCheck = { allowed: boolean; retryAfterSeconds: number };
 
-export class LoginRateLimiter {
+export type LoginLimiter = {
+  check(ip: string, username: string, now?: number): RateLimitCheck | Promise<RateLimitCheck>;
+  fail(ip: string, username: string, now?: number): void | Promise<void>;
+  success(ip: string, username: string): void | Promise<void>;
+};
+
+export class LoginRateLimiter implements LoginLimiter {
   private attempts = new Map<string, LoginAttempt>();
 
   constructor(
