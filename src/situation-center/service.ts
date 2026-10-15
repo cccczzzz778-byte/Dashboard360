@@ -131,9 +131,9 @@ export function createSituationCenterService(deps: SituationCenterDeps) {
 
     const summary: SituationSummary = {
       institutions: scoped.length,
-      doctors: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.doctors')),
-      nurses: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.nurses')),
-      beds: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'inpatient.beds')),
+      doctors: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.doctors'))),
+      nurses: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'staff.nurses'))),
+      beds: sumPresent(scoped.map(institution => numericMetric(metricsById.get(institution.id) ?? [], 'inpatient.beds'))),
       dataCompleteness: institutions.some(item => item.dataCompleteness != null)
         ? Math.round(institutions.reduce((sum, item) => sum + (item.dataCompleteness ?? 0), 0) /
           institutions.filter(item => item.dataCompleteness != null).length)
