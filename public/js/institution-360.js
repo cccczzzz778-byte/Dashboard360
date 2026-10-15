@@ -17,7 +17,6 @@
 
   const statusLabels = {live:'Jonli',manual:'Manual',imported:'Katalog',unavailable:'Ulanmagan',error:'Xato'};
   const protectedKeys = new Set(['officialName','type','district','address','leader','phone']);
-
   const hasValue = metric => metric.value !== null && metric.value !== '';
 
   function districtLabel(key) {
@@ -147,8 +146,14 @@
     submit.textContent='Saqlanmoqda...';
     try {
       const payload={institutionId:form.elements.institutionId.value,moduleKey:activeKey,metricKey:form.elements.metricKey.value,value:form.elements.value.value,unit:form.elements.unit.value};
-      const response=await fetch('/api/admin/metrics',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify(payload)});
+      const csrfToken=window.SSB360_STATE?.bootstrap?.security?.csrfToken ?? '';
+      const response=await fetch('/api/admin/metrics',{method:'POST',headers:{'content-type':'application/json','accept':'application/json','x-csrf-token':csrfToken},body:JSON.stringify(payload)});
       if (response.status===401) return location.href='/login';
+      if (response.status===403) {
+        alert('Sessiya xavfsizlik tokeni eskirgan. Sahifa qayta yuklanadi.');
+        location.reload();
+        return;
+      }
       if (!response.ok) throw new Error(`save_${response.status}`);
       dialog.close();
       current=await fetchInstitution(current.institution.id);
