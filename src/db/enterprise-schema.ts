@@ -34,7 +34,7 @@ export async function ensureEnterpriseSchema(pool: Pool): Promise<void> {
     create table if not exists sessions (
       token_hash text primary key,
       user_id text not null references users(id) on delete cascade,
-      csrf_token_hash text not null,
+      csrf_token text not null,
       client_fingerprint text,
       created_at timestamptz not null default now(),
       last_seen_at timestamptz not null default now(),
