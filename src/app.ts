@@ -57,14 +57,14 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
 
   app.get('/api/institutions/:id/summary', requireAuth(sessions), async (req, res) => {
     if (!repo) return res.status(404).json({ code: 'not_found' });
-    const institution = await repo.findById(req.params.id);
+    const institution = await repo.findById(String(req.params.id));
     if (!institution) return res.status(404).json({ code: 'not_found' });
     res.json({ institution, modules: buildUnavailableModules() });
   });
 
   app.get('/api/modules/:institutionId', requireAuth(sessions), async (req, res) => {
     if (!repo) return res.status(404).json({ code: 'not_found' });
-    const institution = await repo.findById(req.params.institutionId);
+    const institution = await repo.findById(String(req.params.institutionId));
     if (!institution) return res.status(404).json({ code: 'not_found' });
     res.json({ institutionId: institution.id, modules: buildUnavailableModules() });
   });
