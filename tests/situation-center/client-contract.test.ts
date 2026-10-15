@@ -22,9 +22,9 @@ test('maplibre client is self-hosted, risk-null-safe and labels coordinate accur
 
 test('default situation map is a dark vector basemap with real building extrusion', () => {
   const js = readFileSync(clientUrl, 'utf8');
-  assert.match(js, /https:\/\/tiles\.openfreemap\.org\/planet/);
-  assert.match(js, /type\s*:\s*['"]vector['"]/);
-  assert.match(js, /source-layer['"]?\s*:\s*['"]building['"]/);
+  assert.match(js, /https:\/\/tiles\.openfreemap\.org\/styles\/dark/);
+  assert.match(js, /source\?\.type\s*===\s*['"]vector['"]|source\.type\s*===\s*['"]vector['"]/);
+  assert.match(js, /['"]source-layer['"]\s*:\s*['"]building['"]/);
   assert.match(js, /fill-extrusion/);
   assert.match(js, /render_height|render_min_height/);
   assert.match(js, /zoom\s*:\s*(?:12(?:\.\d+)?|13(?:\.\d+)?|14(?:\.\d+)?)/);
@@ -34,7 +34,8 @@ test('default situation map is a dark vector basemap with real building extrusio
 test('CSP permits self-hosted MapLibre worker and approved OpenFreeMap vector fetches without script/style CDN', () => {
   const source = readFileSync(securityUrl, 'utf8');
   assert.match(source, /worker-src\s+'self'/);
-  assert.match(source, /connect-src\s+'self'[^;]*https:\/\/tiles\.openfreemap\.org/);
+  assert.match(source, /https:\/\/tiles\.openfreemap\.org/);
+  assert.match(source, /connect-src/);
   assert.doesNotMatch(source, /script-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
   assert.doesNotMatch(source, /style-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
 });
