@@ -8,8 +8,7 @@ export function dashboardHtml() {
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07131f">
   <title>Buxoro SSB 360 · Yagona nazorat markazi</title>
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/css/app.css?v=20261015-2">
   <link rel="stylesheet" href="/css/map.css?v=20261015-2">
   <link rel="stylesheet" href="/css/institution-pro.css?v=20261015-2">
@@ -91,7 +90,7 @@ export function dashboardHtml() {
   </div>
 </div>
 ${institution360Html()}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="/vendor/leaflet/leaflet.js"></script>
 <script src="/js/view-mode.js?v=20261015-3" defer></script>
 <script src="/js/map.js?v=20261015-2" defer></script>
 <script src="/js/institution-360.js?v=20261015-2" defer></script>
