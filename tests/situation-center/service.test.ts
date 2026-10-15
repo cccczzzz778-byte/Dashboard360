@@ -64,3 +64,15 @@ test('ranking excludes missing values instead of inventing zero', async () => {
   assert.ok(!result.rankings.some((x: any) => x.value === 0 && x.sourceState === 'unavailable'));
   assert.deepEqual(result.rankings, []);
 });
+
+test('bootstrap exposes only server-approved map style configuration', async () => {
+  const { createSituationCenterService } = await import('../../src/situation-center/service.js');
+  const result = await createSituationCenterService({
+    ...deps(),
+    mapStyle: { external: true, styleUrl: 'https://approved.example/style.json' }
+  } as any).buildBootstrap(principal);
+  assert.deepEqual((result as any).mapStyle, {
+    external: true,
+    styleUrl: 'https://approved.example/style.json'
+  });
+});
