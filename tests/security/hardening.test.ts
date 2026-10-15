@@ -9,6 +9,25 @@ function cookieFrom(res: any) {
   return (Array.isArray(raw) ? raw[0] : raw).split(';')[0];
 }
 
+function setTestCredentials() {
+  const old = {
+    username: process.env.ADMIN_USERNAME,
+    password: process.env.ADMIN_PASSWORD,
+    hash: process.env.ADMIN_PASSWORD_HASH,
+    nodeEnv: process.env.NODE_ENV
+  };
+  process.env.NODE_ENV = 'test';
+  process.env.ADMIN_USERNAME = 'admin';
+  process.env.ADMIN_PASSWORD = 'secret';
+  delete process.env.ADMIN_PASSWORD_HASH;
+  return () => {
+    process.env.ADMIN_USERNAME = old.username;
+    process.env.ADMIN_PASSWORD = old.password;
+    process.env.NODE_ENV = old.nodeEnv;
+    if (old.hash === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = old.hash;
+  };
+}
+
 test('production responses expose hardened browser security headers', async () => {
   const oldNodeEnv = process.env.NODE_ENV;
   process.env.NODE_ENV = 'production';
@@ -34,31 +53,17 @@ test('sessions carry a CSRF token and validate it', () => {
 });
 
 test('authenticated admin write is rejected without CSRF token', async () => {
-  const oldU = process.env.ADMIN_USERNAME;
-  const oldP = process.env.ADMIN_PASSWORD;
-  const oldH = process.env.ADMIN_PASSWORD_HASH;
-  process.env.ADMIN_USERNAME = 'admin';
-  process.env.ADMIN_PASSWORD = 'secret';
-  delete process.env.ADMIN_PASSWORD_HASH;
+  const restore = setTestCredentials();
   try {
     const app = createServer({ sessionManager: new SessionManager() });
     const login = await request(app).post('/login').type('form').send({ username: 'admin', password: 'secret' }).expect(302);
     const cookie = cookieFrom(login);
     await request(app).post('/api/admin/metrics').set('Cookie', cookie).send({}).expect(403);
-  } finally {
-    process.env.ADMIN_USERNAME = oldU;
-    process.env.ADMIN_PASSWORD = oldP;
-    if (oldH === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = oldH;
-  }
+  } finally { restore(); }
 });
 
 test('login attempts are throttled after repeated failures', async () => {
-  const oldU = process.env.ADMIN_USERNAME;
-  const oldP = process.env.ADMIN_PASSWORD;
-  const oldH = process.env.ADMIN_PASSWORD_HASH;
-  process.env.ADMIN_USERNAME = 'admin';
-  process.env.ADMIN_PASSWORD = 'secret';
-  delete process.env.ADMIN_PASSWORD_HASH;
+  const restore = setTestCredentials();
   try {
     const app = createServer({ sessionManager: new SessionManager() });
     for (let i = 0; i < 5; i++) {
@@ -66,9 +71,5 @@ test('login attempts are throttled after repeated failures', async () => {
     }
     const blocked = await request(app).post('/login').type('form').send({ username: 'admin', password: 'wrong' }).expect(429);
     assert.ok(Number(blocked.headers['retry-after']) > 0);
-  } finally {
-    process.env.ADMIN_USERNAME = oldU;
-    process.env.ADMIN_PASSWORD = oldP;
-    if (oldH === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = oldH;
-  }
+  } finally { restore(); }
 });
