@@ -7,12 +7,15 @@ import { normalizeDistrictName } from './map/district-map.js';
 import { dashboardHtml } from './views/dashboard.js';
 import { loginHtml } from './views/login.js';
 import { SessionManager, hashPassword, verifyPassword } from './auth/session.js';
+import { SessionStore } from './auth/session-store.js';
 import { requireAuth, requireCsrf, requireRole, readSessionToken, sessionCookieName } from './auth/middleware.js';
+import { createUserRepository } from './users/repository.js';
 import { buildInstitutionModules, metricExists, moduleDefinitions } from './domain/modules.js';
 import { mergeNamespacedMetrics, namespacedMetricKey } from './domain/metric-namespace.js';
 import { createAuditRecorder } from './audit/store.js';
 import { catalogByDistrict, catalogInstitution, districts, institutionCatalog, integrations } from './catalog.js';
 import type { Institution, InstitutionMetric } from './domain/institution.js';
+import type { UserPrincipal } from './auth/types.js';
 import { securityHeaders, sameOriginGuard, requestFingerprint } from './security/http.js';
 import { LoginRateLimiter, type LoginLimiter } from './security/rate-limit.js';
 import { RedisLoginRateLimiter } from './security/redis-rate-limit.js';
@@ -46,8 +49,13 @@ export function createServer(options: {
   }));
   app.use(express.static(resolvePublicDir(), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
 
-  const sessions = options.sessionManager ?? new SessionManager();
   const pool = options.pool ?? (process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : undefined);
+  const memorySessions = options.sessionManager ?? new SessionManager();
+  const persistentSessions = pool && process.env.NODE_ENV === 'production' && !options.sessionManager
+    ? new SessionStore(pool)
+    : undefined;
+  const sessions = persistentSessions ?? memorySessions;
+  const userRepo = pool ? createUserRepository(pool) : undefined;
   const auditRecorder = createAuditRecorder(pool ? { query: (sql, values) => pool.query(sql, values as any[]) } : undefined);
 
   const redisClient = options.redisClient ?? (process.env.REDIS_URL ? createClient({ url: process.env.REDIS_URL }) : undefined);
@@ -62,6 +70,7 @@ export function createServer(options: {
   app.locals.redisClient = redisClient;
   app.locals.pool = pool;
   app.locals.auditRecorder = auditRecorder;
+  app.locals.sessionBackend = sessions;
 
   const loginLimiter: LoginLimiter = options.loginLimiter ?? (
     redisClient
@@ -150,10 +159,32 @@ export function createServer(options: {
       return res.status(429).send(loginHtml('Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring.'));
     }
 
-    let valid = username === configuredUser;
-    if (valid && configuredHash) valid = await verifyPassword(password, configuredHash);
-    else if (valid && process.env.NODE_ENV !== 'production' && legacyPassword) valid = password === legacyPassword;
-    else valid = false;
+    let valid = false;
+    let principal: UserPrincipal | null = null;
+
+    if (persistentSessions && userRepo) {
+      await dbReady;
+      if (configuredHash && username === configuredUser) {
+        try {
+          await userRepo.ensureBootstrapAdmin({ username: configuredUser, passwordHash: configuredHash });
+        } catch (error: any) {
+          console.error(JSON.stringify({ type: 'bootstrap_admin_error', code: error?.code ?? 'bootstrap_admin_error' }));
+        }
+      }
+      const account = await userRepo.findByUsername(username);
+      if (account) {
+        valid = await verifyPassword(password, account.passwordHash);
+        if (valid) {
+          const { passwordHash: _passwordHash, isActive: _isActive, ...safePrincipal } = account;
+          principal = safePrincipal;
+        }
+      }
+    } else {
+      valid = username === configuredUser;
+      if (valid && configuredHash) valid = await verifyPassword(password, configuredHash);
+      else if (valid && process.env.NODE_ENV !== 'production' && legacyPassword) valid = password === legacyPassword;
+      else valid = false;
+    }
 
     if (!valid) {
       await loginLimiter.fail(ipKey, username);
@@ -162,18 +193,28 @@ export function createServer(options: {
     }
 
     await loginLimiter.success(ipKey, username);
-    const token = sessions.create({ username: configuredUser, role: 'admin' });
-    void auditRecorder.record('login', { username: configuredUser, client });
+    let token: string;
+    if (persistentSessions && principal) {
+      const created = await persistentSessions.create(principal, { clientFingerprint: client });
+      token = created.token;
+    } else {
+      token = memorySessions.create({ username: configuredUser, role: 'admin' });
+    }
+
+    void auditRecorder.record('login', { username, client });
     const cookieName = sessionCookieName();
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     res.setHeader('Set-Cookie', `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800; Priority=High${secure}`);
     res.redirect('/');
   });
 
-  app.get('/logout', (req, res) => {
+  app.get('/logout', async (req, res) => {
     const token = readSessionToken(req.headers.cookie ?? '');
-    const session = sessions.get(token);
-    if (token) sessions.destroy(token);
+    const session = await sessions.get(token) as any;
+    if (token) {
+      if (persistentSessions) await persistentSessions.revoke(token);
+      else memorySessions.destroy(token);
+    }
     void auditRecorder.record('logout', { username: session?.username ?? 'unknown', client: requestFingerprint(req) });
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     res.append('Set-Cookie', `${sessionCookieName()}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
