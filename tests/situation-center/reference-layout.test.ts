@@ -37,8 +37,8 @@ test('reference layout keeps title visually centered and four right-side HUD blo
 
 test('1200px executive viewport uses compact HUD instead of the oversized desktop dead-zone', () => {
   const css = `${readFileSync(baseCssUrl, 'utf8')}\n${readFileSync(cssUrl, 'utf8')}`;
-  assert.match(css, /@media\s*\(max-width:\s*1450px\)[\s\S]*@media\s*\(min-width:\s*901px\)/i);
-  assert.match(css, /@media\s*\(max-width:\s*1450px\)[\s\S]*--sc-hud-width\s*:\s*22\dpx/i);
-  assert.match(css, /@media\s*\(max-width:\s*1450px\)[\s\S]*\.situation-title-center\s+h1[\s\S]*font-size\s*:\s*clamp\([^;]*28px\)/i);
+  assert.match(css, /@media\s*\(min-width:\s*901px\)\s*and\s*\(max-width:\s*1450px\)/i);
+  assert.match(css, /@media\s*\(min-width:\s*901px\)\s*and\s*\(max-width:\s*1450px\)[\s\S]*--sc-hud-width\s*:\s*22\dpx/i);
+  assert.match(css, /@media\s*\(min-width:\s*901px\)\s*and\s*\(max-width:\s*1450px\)[\s\S]*\.situation-title-center\s+h1[\s\S]*font-size\s*:\s*clamp\([^;]*28px\)/i);
   assert.match(css, /@media\s*\(max-width:\s*900px\)/i);
 });
