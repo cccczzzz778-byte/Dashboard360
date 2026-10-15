@@ -54,6 +54,16 @@ export async function ensureSchema(pool: Pool, institutions: Institution[]) {
       fetched_at timestamptz not null default now(),
       primary key (institution_id, metric_key, period)
     );
+    create table if not exists audit_events (
+      id bigserial primary key,
+      event_type text not null,
+      actor_username text,
+      client_fingerprint text,
+      metadata jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now()
+    );
+    create index if not exists audit_events_created_idx on audit_events(created_at desc);
+    create index if not exists audit_events_type_idx on audit_events(event_type, created_at desc);
   `);
   for (const institution of institutions) {
     await pool.query(
