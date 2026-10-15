@@ -22,7 +22,7 @@ function backend() {
   };
 }
 
-async function buildApp() {
+async function buildApp(options: { executiveToday?: { build(principal: any): Promise<unknown> } } = {}) {
   if (!existsSync(routerUrl)) throw new Error('src/enterprise/router.ts must exist');
   const { createEnterpriseRouter } = await import('../../src/enterprise/router.js');
   const app = express();
@@ -49,7 +49,8 @@ async function buildApp() {
     },
     integrations: {
       async listHealth() { return [{ key: 'qr', label: 'QR', enabled: true, authState: 'configured', status: 'stale', lastSuccessAt: null, lastRunAt: null, latencyMs: null, errorCode: null, staleAfterSeconds: 3600, ageMs: null }]; }
-    }
+    },
+    executiveToday: options.executiveToday
   }));
   return app;
 }
@@ -98,10 +99,27 @@ test('integration health requires integrations permission and executive can read
   assert.equal(allowed.body.items[0].status, 'stale');
 });
 
-test('executive today endpoint exists but is explicit not_ready until Task 9 service is wired', async () => {
+test('executive today endpoint is explicit not_ready until a service is supplied', async () => {
   if (!existsSync(routerUrl)) return assert.fail('src/enterprise/router.ts must exist');
   const app = await buildApp();
   const res = await request(app).get('/api/v1/executive/today').set('Cookie', 'ssb360=exec');
   assert.equal(res.status, 503);
   assert.deepEqual(res.body, { code: 'not_ready' });
+});
+
+test('executive today endpoint delegates to supplied scoped aggregate service', async () => {
+  if (!existsSync(routerUrl)) return assert.fail('src/enterprise/router.ts must exist');
+  let actorRole = '';
+  const app = await buildApp({
+    executiveToday: {
+      async build(principal) {
+        actorRole = principal.role;
+        return { generatedAt: '2026-10-15T10:05:00.000Z', summary: { institutions: 2 }, topAttention: [] };
+      }
+    }
+  });
+  const res = await request(app).get('/api/v1/executive/today').set('Cookie', 'ssb360=exec');
+  assert.equal(res.status, 200);
+  assert.equal(actorRole, 'executive');
+  assert.equal(res.body.summary.institutions, 2);
 });
