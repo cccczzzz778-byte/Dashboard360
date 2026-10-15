@@ -1,11 +1,20 @@
+import http from 'node:http';
 import { createServer } from './app.js';
 import { hardenHttpServer } from './runtime/http.js';
+import { requestContext, apiNotFound, safeErrorHandler } from './security/errors.js';
 
 const port = Number(process.env.PORT ?? 3000);
 const app = createServer();
-const server = hardenHttpServer(app.listen(port, '0.0.0.0', () => {
-  console.log(`buxoro-ssb-360 listening on ${port}`);
+app.use('/api', apiNotFound);
+app.use(safeErrorHandler);
+
+const server = hardenHttpServer(http.createServer((req, res) => {
+  requestContext(req as any, res as any, () => app(req, res));
 }));
+
+server.listen(port, '0.0.0.0', () => {
+  console.log(`buxoro-ssb-360 listening on ${port}`);
+});
 
 let shuttingDown = false;
 
