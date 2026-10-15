@@ -8,7 +8,8 @@ import { dashboardHtml } from './views/dashboard.js';
 import { loginHtml } from './views/login.js';
 import { SessionManager, hashPassword, verifyPassword } from './auth/session.js';
 import { SessionStore } from './auth/session-store.js';
-import { requireAuth, requireCsrf, requireRole, readSessionToken, sessionCookieName } from './auth/middleware.js';
+import { requireAuth, requireCsrf, readSessionToken, sessionCookieName } from './auth/middleware.js';
+import { canAccessInstitution, filterInstitutionsForPrincipal, principalFromSession, requirePermission } from './auth/authorization.js';
 import { createUserRepository } from './users/repository.js';
 import { buildInstitutionModules, metricExists, moduleDefinitions } from './domain/modules.js';
 import { mergeNamespacedMetrics, namespacedMetricKey } from './domain/metric-namespace.js';
@@ -123,6 +124,10 @@ export function createServer(options: {
     return mergeNamespacedMetrics(buildInstitutionModules(institution), metrics);
   }
 
+  function requestPrincipal(req: express.Request) {
+    return (req as any).principal ?? principalFromSession((req as any).session);
+  }
+
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'buxoro-ssb-360' }));
 
   app.get('/api/ready', async (_req, res) => {
@@ -224,8 +229,9 @@ export function createServer(options: {
 
   app.get('/', requireAuth(sessions), (_req, res) => res.send(dashboardHtml()));
 
-  app.get('/api/bootstrap', requireAuth(sessions), async (req, res) => {
-    const institutions = await allInstitutions();
+  app.get('/api/bootstrap', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
+    const principal = requestPrincipal(req);
+    const institutions = filterInstitutionsForPrincipal(principal, await allInstitutions());
     const sources = sourceStates();
     const session = (req as any).session;
     res.json({
@@ -238,7 +244,7 @@ export function createServer(options: {
       security: { csrfToken: session.csrfToken, role: session.role },
       summary: {
         institutions: institutions.length,
-        districts: districts.length,
+        districts: new Set(institutions.map(x => x.districtKey)).size,
         configuredSources: sources.filter(x => x.status !== 'unavailable').length,
         totalSources: sources.length
       },
@@ -249,16 +255,17 @@ export function createServer(options: {
     });
   });
 
-  app.get('/api/institutions', requireAuth(sessions), async (req, res) => {
+  app.get('/api/institutions', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
+    const principal = requestPrincipal(req);
     const raw = String(req.query.district ?? '');
-    if (!raw) return res.json(await allInstitutions());
-    const district = normalizeDistrictName(raw);
-    res.json(await byDistrict(district));
+    const rows = raw ? await byDistrict(normalizeDistrictName(raw)) : await allInstitutions();
+    res.json(filterInstitutionsForPrincipal(principal, rows));
   });
 
-  app.get('/api/institutions/:id/summary', requireAuth(sessions), async (req, res) => {
+  app.get('/api/institutions/:id/summary', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
     const institution = await findInstitution(String(req.params.id));
     if (!institution) return res.status(404).json({ code: 'not_found' });
+    if (!canAccessInstitution(requestPrincipal(req), institution)) return res.status(403).json({ code: 'forbidden' });
     let metrics: InstitutionMetric[] = [];
     if (pool) {
       try { await dbReady; metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
@@ -266,9 +273,10 @@ export function createServer(options: {
     res.json({ institution, modules: modulesFor(institution, metrics), integrations });
   });
 
-  app.get('/api/modules/:institutionId', requireAuth(sessions), async (req, res) => {
+  app.get('/api/modules/:institutionId', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
     const institution = await findInstitution(String(req.params.institutionId));
     if (!institution) return res.status(404).json({ code: 'not_found' });
+    if (!canAccessInstitution(requestPrincipal(req), institution)) return res.status(403).json({ code: 'forbidden' });
     let metrics: InstitutionMetric[] = [];
     if (pool) {
       try { metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
@@ -276,7 +284,7 @@ export function createServer(options: {
     res.json({ institutionId: institution.id, modules: modulesFor(institution, metrics) });
   });
 
-  app.post('/api/admin/metrics', requireAuth(sessions), requireRole('admin'), requireCsrf(sessions), async (req, res) => {
+  app.post('/api/admin/metrics', requireAuth(sessions), requirePermission('metric.write'), requireCsrf(sessions), async (req, res) => {
     if (!pool) return res.status(503).json({ code: 'database_unavailable' });
     const institutionId = String(req.body.institutionId ?? '').slice(0, 120);
     const moduleKey = String(req.body.moduleKey ?? '').slice(0, 80);
@@ -285,7 +293,9 @@ export function createServer(options: {
     const unit = req.body.unit == null ? null : String(req.body.unit).slice(0, 50);
     const moduleExists = moduleDefinitions.some(x => x.key === moduleKey);
     if (!institutionId || !moduleExists || !metricKey || !metricExists(metricKey)) return res.status(400).json({ code: 'invalid_metric' });
-    if (!(await findInstitution(institutionId))) return res.status(404).json({ code: 'institution_not_found' });
+    const institution = await findInstitution(institutionId);
+    if (!institution) return res.status(404).json({ code: 'institution_not_found' });
+    if (!canAccessInstitution(requestPrincipal(req), institution)) return res.status(403).json({ code: 'forbidden' });
     const value = rawValue == null || rawValue === '' ? null : String(rawValue).slice(0, 200);
     try {
       const saved = await upsertManualMetric(pool, { institutionId, metricKey: namespacedMetricKey(moduleKey, metricKey), value, unit });
@@ -303,7 +313,7 @@ export function createServer(options: {
     }
   });
 
-  app.get('/api/integrations', requireAuth(sessions), (_req, res) => res.json({ integrations, sources: sourceStates() }));
+  app.get('/api/integrations', requireAuth(sessions), requirePermission('integrations.view'), (_req, res) => res.json({ integrations, sources: sourceStates() }));
 
   return app;
 }
