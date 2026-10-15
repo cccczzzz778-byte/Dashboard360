@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -15,14 +15,16 @@ test('MapLibre is pinned and self-host asset helper exists', async () => {
 
 test('MapLibre helper copies ESM runtime assets locally without CDN references', async () => {
   assert.ok(existsSync(helperUrl), 'src/vendor/maplibre-assets.ts must exist');
-  if (!existsSync(helperUrl)) return;
   const { ensureMapLibreVendorAssets } = await import('../../src/vendor/maplibre-assets.js');
   const root = mkdtempSync(join(tmpdir(), 'ssb360-maplibre-'));
+  const source = join(root, 'node_modules', 'maplibre-gl', 'dist');
+  mkdirSync(source, { recursive: true });
+  const names = ['maplibre-gl.css', 'maplibre-gl.mjs', 'maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs'];
+  for (const name of names) writeFileSync(join(source, name), `/* local ${name} */`, 'utf8');
+
   await ensureMapLibreVendorAssets(root);
   const base = join(root, 'public', 'vendor', 'maplibre');
-  for (const name of ['maplibre-gl.css', 'maplibre-gl.mjs', 'maplibre-gl-csp-worker.js', 'shared.js']) {
-    assert.ok(existsSync(join(base, name)), `${name} must be copied`);
-  }
+  for (const name of names) assert.ok(existsSync(join(base, name)), `${name} must be copied`);
   const js = readFileSync(join(base, 'maplibre-gl.mjs'), 'utf8');
   assert.doesNotMatch(js, /unpkg\.com|cdn\.jsdelivr\.net/i);
 });
