@@ -13,8 +13,9 @@ export function dashboardHtml() {
   <link rel="stylesheet" href="/css/app.css?v=20261015-2">
   <link rel="stylesheet" href="/css/map.css?v=20261015-2">
   <link rel="stylesheet" href="/css/institution-pro.css?v=20261015-2">
+  <link rel="stylesheet" href="/css/view-mode.css?v=20261015-3">
 </head>
-<body>
+<body data-view-mode="dark">
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand"><div class="brand-mark">+</div><div><strong>BUXORO SSB</strong><span>360° nazorat markazi</span></div></div>
@@ -31,7 +32,15 @@ export function dashboardHtml() {
   <div class="workspace">
     <header class="topbar">
       <div><span class="eyebrow">Buxoro viloyati sog‘liqni saqlash boshqarmasi</span><h1>Rahbar nazorati</h1><p>Xarita → hudud → muassasa → 360° nazorat</p></div>
-      <div class="topbar-actions"><div class="timebox"><span>Oxirgi yangilanish</span><strong id="clock">—</strong></div><a class="btn secondary" href="/logout">Chiqish</a></div>
+      <div class="topbar-actions">
+        <div id="viewModeControl" class="view-mode-control" role="group" aria-label="Ko‘rinish rejimi">
+          <button class="view-mode-btn active" type="button" data-view-mode="dark" aria-pressed="true" title="Tungi rejim"><span class="mode-icon">☾</span><span class="mode-label">Tungi</span></button>
+          <button class="view-mode-btn" type="button" data-view-mode="light" aria-pressed="false" title="Kunduzgi rejim"><span class="mode-icon">☀</span><span class="mode-label">Kunduzgi</span></button>
+          <button class="view-mode-btn" type="button" data-view-mode="tv" aria-pressed="false" title="Rahbar / TV rejimi"><span class="mode-icon">▣</span><span class="mode-label">Rahbar / TV</span></button>
+        </div>
+        <div class="timebox"><span>Oxirgi yangilanish</span><strong id="clock">—</strong></div>
+        <a class="btn secondary" href="/logout">Chiqish</a>
+      </div>
     </header>
 
     <main class="page-content">
@@ -82,6 +91,7 @@ export function dashboardHtml() {
 </div>
 ${institution360Html()}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="/js/view-mode.js?v=20261015-3" defer></script>
 <script src="/js/map.js?v=20261015-2" defer></script>
 <script src="/js/institution-360.js?v=20261015-2" defer></script>
 </body>
