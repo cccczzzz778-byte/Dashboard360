@@ -7,7 +7,7 @@ export function situationCenterHtml() {
   <meta name="theme-color" content="#031525">
   <title>Buxoro SSB 360 · 3D Situatsion markaz</title>
   <link rel="stylesheet" href="/vendor/maplibre/maplibre-gl.css">
-  <link rel="stylesheet" href="/css/situation-center.css?v=20261015-1">
+  <link rel="stylesheet" href="/css/situation-center.css?v=20261015-2">
 </head>
 <body class="situation-center-page">
   <main class="situation-shell">
@@ -44,7 +44,7 @@ export function situationCenterHtml() {
       </aside>
     </section>
   </main>
-  <script type="module" src="/js/situation-center.js?v=20261015-1"></script>
+  <script type="module" src="/js/situation-center.js?v=20261015-2"></script>
 </body>
 </html>`;
 }
