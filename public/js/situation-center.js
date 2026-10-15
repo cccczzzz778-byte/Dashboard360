@@ -3,7 +3,7 @@ import * as maplibregl from '/vendor/maplibre/maplibre-gl.mjs';
 maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 
 const $ = id => document.getElementById(id);
-const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const displayValue = value => value == null || value === '' ? 'N/A' : String(value);
 const riskTone = severity => severity === 'red' ? 'red' : severity === 'amber' ? 'amber' : severity === 'green' ? 'green' : severity === 'unavailable' ? 'neutral' : 'neutral';
 const accuracyLabel = accuracy => ({
@@ -292,9 +292,12 @@ function supportsWebGL() {
 }
 
 function initMap(bootstrap) {
+  const style = bootstrap.mapStyle?.external && bootstrap.mapStyle.styleUrl
+    ? bootstrap.mapStyle.styleUrl
+    : localRasterStyle;
   const map = new maplibregl.Map({
     container: 'situationMap',
-    style: localRasterStyle,
+    style,
     center: [64.34, 39.82],
     zoom: 8.35,
     pitch: 55,
