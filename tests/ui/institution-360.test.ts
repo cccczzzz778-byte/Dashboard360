@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import { createServer } from '../../src/app.js';
 import { SessionManager } from '../../src/auth/session.js';
+import { dashboardHtml } from '../../src/views/dashboard.js';
+import { institution360Html } from '../../src/views/institution-360.js';
 
 const institution = { id: 'buxoro-001', officialName: 'Buxoro shahar tibbiyot birlashmasi', type: 'SHTB', districtKey: 'buxoro-shahar', address: null, leaderName: null, phone: null, latitude: null, longitude: null };
 void institution;
@@ -31,4 +33,14 @@ test('360 module set renders the full monitoring surface and unavailable values 
       assert.equal(metric.sourceStatus, 'unavailable');
     }
   }
+});
+
+test('Muassasa 360 uses the executive workspace shell and isolated high-z-index stylesheet', () => {
+  const page = dashboardHtml();
+  const drawer = institution360Html();
+  assert.match(page, /\/css\/institution-pro\.css/);
+  assert.match(drawer, /id="institutionExecutiveStats"/);
+  assert.match(drawer, /class="drawer-kpi-strip"/);
+  assert.match(drawer, /id="institutionDataHealth"/);
+  assert.match(drawer, /class="drawer-main"/);
 });
