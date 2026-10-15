@@ -9,9 +9,27 @@ function cookieFrom(res: any) {
   return (Array.isArray(raw) ? raw[0] : raw).split(';')[0];
 }
 
+function setTestCredentials() {
+  const old = {
+    username: process.env.ADMIN_USERNAME,
+    password: process.env.ADMIN_PASSWORD,
+    hash: process.env.ADMIN_PASSWORD_HASH,
+    nodeEnv: process.env.NODE_ENV
+  };
+  process.env.NODE_ENV = 'test';
+  process.env.ADMIN_USERNAME = 'admin';
+  process.env.ADMIN_PASSWORD = 'secret';
+  delete process.env.ADMIN_PASSWORD_HASH;
+  return () => {
+    process.env.ADMIN_USERNAME = old.username;
+    process.env.ADMIN_PASSWORD = old.password;
+    process.env.NODE_ENV = old.nodeEnv;
+    if (old.hash === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = old.hash;
+  };
+}
+
 test('production smoke: health, login and protected map page work', async () => {
-  const oldU = process.env.ADMIN_USERNAME; const oldP = process.env.ADMIN_PASSWORD;
-  process.env.ADMIN_USERNAME = 'admin'; process.env.ADMIN_PASSWORD = 'secret';
+  const restore = setTestCredentials();
   try {
     const app = createServer({ sessionManager: new SessionManager() });
     const health = await request(app).get('/api/health').expect(200);
@@ -21,12 +39,11 @@ test('production smoke: health, login and protected map page work', async () => 
     const login = await request(app).post('/login').type('form').send({ username: 'admin', password: 'secret' }).expect(302);
     const cookie = cookieFrom(login);
     await request(app).get('/').set('Cookie', cookie).expect(200).expect(/360° nazorat markazi/).expect(/Buxoro viloyati/);
-  } finally { process.env.ADMIN_USERNAME = oldU; process.env.ADMIN_PASSWORD = oldP; }
+  } finally { restore(); }
 });
 
 test('mobile markup includes responsive viewport and map controls are buttons for keyboard use', async () => {
-  const oldU = process.env.ADMIN_USERNAME; const oldP = process.env.ADMIN_PASSWORD;
-  process.env.ADMIN_USERNAME = 'admin'; process.env.ADMIN_PASSWORD = 'secret';
+  const restore = setTestCredentials();
   try {
     const app = createServer({ sessionManager: new SessionManager() });
     const login = await request(app).post('/login').type('form').send({ username: 'admin', password: 'secret' });
@@ -34,5 +51,5 @@ test('mobile markup includes responsive viewport and map controls are buttons fo
     const res = await request(app).get('/').set('Cookie', cookie).expect(200);
     assert.match(res.text, /name="viewport"/);
     assert.match(res.text, /role="listbox"/);
-  } finally { process.env.ADMIN_USERNAME = oldU; process.env.ADMIN_PASSWORD = oldP; }
+  } finally { restore(); }
 });
