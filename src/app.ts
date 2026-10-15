@@ -8,6 +8,7 @@ import { loginHtml } from './views/login.js';
 import { SessionManager, hashPassword, verifyPassword } from './auth/session.js';
 import { requireAuth } from './auth/middleware.js';
 import { buildInstitutionModules, metricExists, moduleDefinitions } from './domain/modules.js';
+import { mergeNamespacedMetrics, namespacedMetricKey } from './domain/metric-namespace.js';
 import { audit } from './audit/log.js';
 import { catalogByDistrict, catalogInstitution, districts, institutionCatalog, integrations } from './catalog.js';
 import type { Institution, InstitutionMetric } from './domain/institution.js';
@@ -70,6 +71,10 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
       try { const row = await repo.findById(id); if (row) return row; } catch { /* fallback */ }
     }
     return catalogInstitution(id);
+  }
+
+  function modulesFor(institution: Institution, metrics: InstitutionMetric[]) {
+    return mergeNamespacedMetrics(buildInstitutionModules(institution), metrics);
   }
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'buxoro-ssb-360' }));
@@ -135,7 +140,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
     if (pool) {
       try { await dbReady; metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
     }
-    res.json({ institution, modules: buildInstitutionModules(institution, metrics), integrations });
+    res.json({ institution, modules: modulesFor(institution, metrics), integrations });
   });
 
   app.get('/api/modules/:institutionId', requireAuth(sessions), async (req, res) => {
@@ -145,21 +150,23 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
     if (pool) {
       try { metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
     }
-    res.json({ institutionId: institution.id, modules: buildInstitutionModules(institution, metrics) });
+    res.json({ institutionId: institution.id, modules: modulesFor(institution, metrics) });
   });
 
   app.post('/api/admin/metrics', requireAuth(sessions), async (req, res) => {
     if (!pool) return res.status(503).json({ code: 'database_unavailable' });
     const institutionId = String(req.body.institutionId ?? '').slice(0, 120);
+    const moduleKey = String(req.body.moduleKey ?? '').slice(0, 80);
     const metricKey = String(req.body.metricKey ?? '').slice(0, 120);
     const rawValue = req.body.value;
     const unit = req.body.unit == null ? null : String(req.body.unit).slice(0, 50);
-    if (!institutionId || !metricKey || !metricExists(metricKey)) return res.status(400).json({ code: 'invalid_metric' });
+    const moduleExists = moduleDefinitions.some(x => x.key === moduleKey);
+    if (!institutionId || !moduleExists || !metricKey || !metricExists(metricKey)) return res.status(400).json({ code: 'invalid_metric' });
     if (!(await findInstitution(institutionId))) return res.status(404).json({ code: 'institution_not_found' });
     const value = rawValue == null || rawValue === '' ? null : String(rawValue).slice(0, 200);
     try {
-      const saved = await upsertManualMetric(pool, { institutionId, metricKey, value, unit });
-      audit('metric_upsert', { institutionId, metricKey });
+      const saved = await upsertManualMetric(pool, { institutionId, metricKey: namespacedMetricKey(moduleKey, metricKey), value, unit });
+      audit('metric_upsert', { institutionId, moduleKey, metricKey });
       res.json({ ok: true, metric: saved });
     } catch (error: any) {
       console.error(JSON.stringify({ type: 'metric_upsert_error', message: error?.message ?? String(error) }));
