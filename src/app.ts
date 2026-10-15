@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { createInstitutionRepository } from './db/index.js';
 import { normalizeDistrictName } from './map/district-map.js';
@@ -11,13 +10,15 @@ import { requireAuth } from './auth/middleware.js';
 import { buildUnavailableModules } from './domain/modules.js';
 import { audit } from './audit/log.js';
 
-const dirname = path.dirname(fileURLToPath(import.meta.url));
+export function resolvePublicDir(root = process.cwd()) {
+  return path.join(root, 'public');
+}
 
 export function createServer(options: { pool?: Pool; sessionManager?: SessionManager } = {}) {
   const app = express();
   app.use(express.urlencoded({ extended: false }));
   app.use(express.json());
-  app.use(express.static(path.join(dirname, '../public')));
+  app.use(express.static(resolvePublicDir()));
 
   const sessions = options.sessionManager ?? new SessionManager();
   const pool = options.pool ?? (process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : undefined);
