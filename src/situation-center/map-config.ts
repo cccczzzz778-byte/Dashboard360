@@ -5,6 +5,8 @@ export const SITUATION_MAP_DEFAULTS = {
   bearing: -12
 } as const;
 
+export const SITUATION_MAP_DEFAULT_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+
 export type MapStyleResolution = {
   external: boolean;
   styleUrl: string | null;
@@ -12,7 +14,9 @@ export type MapStyleResolution = {
 
 export function resolveMapStyle(input: { url?: string | null; allowedHosts?: string[] } = {}): MapStyleResolution {
   const raw = input.url?.trim();
-  if (!raw) return { external: false, styleUrl: null };
+  if (!raw) {
+    return { external: true, styleUrl: SITUATION_MAP_DEFAULT_STYLE_URL };
+  }
   try {
     const parsed = new URL(raw);
     const allowed = new Set((input.allowedHosts ?? []).map(host => host.trim().toLowerCase()).filter(Boolean));

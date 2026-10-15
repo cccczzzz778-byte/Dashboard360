@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const viewUrl = new URL('../../src/views/situation-center.ts', import.meta.url);
 const cssUrl = new URL('../../public/css/situation-reference.css', import.meta.url);
+const baseCssUrl = new URL('../../public/css/situation-center.css', import.meta.url);
 const clientUrl = new URL('../../public/js/situation-reference.js', import.meta.url);
 
 test('reference layout exposes centered title, risk donut and today activity panels', () => {
@@ -32,4 +33,12 @@ test('reference layout keeps title visually centered and four right-side HUD blo
   assert.match(css, /\.situation-right\s*\{[^}]*grid-template-rows\s*:[^;}]*repeat\(4/is);
   assert.match(css, /\.sc-risk-donut/is);
   assert.match(css, /\.sc-today-number/is);
+});
+
+test('1200px executive viewport uses compact HUD instead of the oversized desktop dead-zone', () => {
+  const css = `${readFileSync(baseCssUrl, 'utf8')}\n${readFileSync(cssUrl, 'utf8')}`;
+  assert.match(css, /@media\s*\(min-width:\s*901px\)\s*and\s*\(max-width:\s*1450px\)/i);
+  assert.match(css, /@media\s*\(min-width:\s*901px\)\s*and\s*\(max-width:\s*1450px\)[\s\S]*--sc-hud-width\s*:\s*22\dpx/i);
+  assert.match(css, /@media\s*\(min-width:\s*901px\)\s*and\s*\(max-width:\s*1450px\)[\s\S]*\.situation-title-center\s+h1[\s\S]*font-size\s*:\s*clamp\([^;]*28px\)/i);
+  assert.match(css, /@media\s*\(max-width:\s*900px\)/i);
 });

@@ -23,6 +23,13 @@
   letter-spacing: .11em;
 }
 
+/* Keep the reference map readable even when the vector style is dark. */
+.situation-map-stage::after {
+  background:
+    linear-gradient(90deg, rgba(0, 11, 24, .34) 0%, transparent 24%, transparent 76%, rgba(0, 11, 24, .34) 100%),
+    radial-gradient(ellipse at 50% 52%, transparent 44%, rgba(0, 9, 20, .16) 80%, rgba(0, 7, 17, .28) 100%);
+}
+
 .situation-right {
   grid-template-rows: repeat(4, minmax(0, 1fr));
 }
@@ -122,7 +129,101 @@
   .sc-today-number { font-size: 38px; }
 }
 
-@media (max-width: 1180px) {
+/* Executive screens around 1200–1440px keep the cinematic overlay instead of
+   falling into the oversized desktop layout. These declarations intentionally
+   override the older <=1180 stacked rules from situation-center.css. */
+@media (min-width: 901px) and (max-width: 1450px) {
+  :root { --sc-hud-width: 228px; }
+
+  body.situation-center-page { overflow: hidden; }
+  .situation-shell {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+    padding-top: 0;
+  }
+  .situation-topbar {
+    position: absolute;
+    min-height: 82px;
+    padding: 9px 14px 13px;
+    justify-content: flex-end;
+  }
+  .situation-title-center {
+    position: absolute;
+    left: 50%;
+    top: 7px;
+    transform: translateX(-50%);
+    width: min(590px, 49vw);
+    text-align: center;
+    pointer-events: none;
+  }
+  .situation-title-center > span { font-size: 9px; letter-spacing: .22em; }
+  .situation-title-center h1 {
+    margin-top: 4px;
+    font-size: clamp(18px, 1.55vw, 28px);
+    line-height: 1.05;
+    letter-spacing: .075em;
+  }
+  #situationStatus { display: inline; max-width: 145px; }
+  .situation-actions { gap: 4px; }
+  .situation-actions button { min-height: 31px; padding: 0 7px; font-size: 11px; }
+  .situation-actions a { display: none; }
+
+  .situation-layout {
+    position: absolute;
+    inset: 0;
+    display: block;
+    padding: 0;
+    overflow: hidden;
+  }
+  .situation-map-stage {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+    border: 0;
+  }
+  .situation-left,
+  .situation-right {
+    position: absolute;
+    z-index: 9;
+    top: 92px;
+    bottom: 12px;
+    width: var(--sc-hud-width);
+    display: grid;
+    gap: 7px;
+  }
+  .situation-left {
+    left: 10px;
+    grid-template-columns: none;
+    grid-template-rows: minmax(220px, .82fr) minmax(260px, 1.18fr);
+  }
+  .situation-right {
+    right: 10px;
+    grid-template-columns: none;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+  }
+  .situation-panel { min-height: 0; padding: 9px 10px; }
+  .situation-panel h2 { margin-bottom: 7px; padding-bottom: 6px; font-size: 12px; }
+  .sc-kpi { padding: 7px 8px; }
+  .sc-kpi span { font-size: 10px; }
+  .sc-kpi strong { font-size: 21px; }
+  .sc-row { min-height: 27px; padding: 3px 4px; font-size: 11px; }
+  .sc-risk-distribution { grid-template-columns: 72px minmax(0, 1fr); gap: 8px; }
+  .sc-risk-donut { width: 68px; height: 68px; }
+  .sc-risk-donut::after { inset: 13px; }
+  .sc-risk-donut-center { font-size: 13px; }
+  .sc-risk-legend { gap: 3px; font-size: 9px; }
+  .sc-today-number { font-size: 34px; }
+  .sc-today-caption { margin-top: 4px; font-size: 9px; }
+  .sc-trend-row { grid-template-columns: 58px minmax(0, 1fr) 34px; gap: 5px; font-size: 9px; }
+
+  .maplibregl-ctrl-top-right {
+    top: 92px;
+    right: calc(var(--sc-hud-width) + 20px);
+  }
+}
+
+@media (max-width: 900px) {
   .situation-title-center {
     position: static;
     transform: none;
@@ -130,5 +231,6 @@
     text-align: left;
     pointer-events: auto;
   }
+  .situation-title-center h1 { font-size: 18px; }
   .situation-right { grid-template-rows: none; }
 }
