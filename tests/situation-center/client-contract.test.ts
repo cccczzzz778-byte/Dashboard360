@@ -30,6 +30,15 @@ test('CSP permits same-origin MapLibre worker and OSM tile fetches without third
   assert.doesNotMatch(source, /style-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
 });
 
+test('approved external map style is consumed only through server bootstrap and CSP allowlist', () => {
+  const js = readFileSync(clientUrl, 'utf8');
+  const security = readFileSync(securityUrl, 'utf8');
+  assert.match(js, /bootstrap\.mapStyle|state\.bootstrap\.mapStyle/);
+  assert.match(js, /styleUrl/);
+  assert.match(security, /SITUATION_MAP_STYLE_ALLOWED_HOSTS/);
+  assert.match(security, /connect-src/);
+});
+
 test('panels use real values and share district/institution selection state', () => {
   const js = readFileSync(clientUrl, 'utf8');
   assert.match(js, /function\s+focusDistrict\s*\(/);
