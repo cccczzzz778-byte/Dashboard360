@@ -2,6 +2,7 @@ import type { Institution, InstitutionMetric } from '../domain/institution.js';
 import type { RiskSeverity } from '../risk/types.js';
 import type { StoredAlert } from '../alerts/repository.js';
 import type { IntegrationHealth } from '../integrations/repository.js';
+import type { MapStyleResolution } from './map-config.js';
 
 export type SituationRisk = {
   score: number | null;
@@ -44,6 +45,7 @@ export type SituationBootstrap = {
   rankings: SituationRanking[];
   alerts: SituationAlertSummary;
   integrations: IntegrationHealth[];
+  mapStyle: MapStyleResolution;
 };
 
 export type SituationDistrict = SituationBootstrap & { districtKey: string };
