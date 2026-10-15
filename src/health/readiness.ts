@@ -16,7 +16,6 @@ async function withTimeout(check: () => Promise<boolean>, timeoutMs: number) {
       Promise.resolve().then(check).then(Boolean).catch(() => false),
       new Promise<boolean>(resolve => {
         timer = setTimeout(() => resolve(false), timeoutMs);
-        timer.unref?.();
       })
     ]);
   } finally {
