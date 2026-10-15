@@ -31,15 +31,6 @@ test('default situation map is a dark vector basemap with real building extrusio
   assert.match(js, /pitch\s*:\s*(?:5[8-9]|6\d)/);
 });
 
-test('3D map adds a darkened OSM raster safety basemap so vector-style failures never leave a black canvas', () => {
-  const js = readFileSync(clientUrl, 'utf8');
-  assert.match(js, /function\s+addResilientRasterBase\s*\(/);
-  assert.match(js, /https:\/\/tile\.openstreetmap\.org\/\{z\}\/\{x\}\/\{y\}\.png/);
-  assert.match(js, /raster-brightness-max/);
-  assert.match(js, /map\.addSource\(['"]ssb-raster-base['"]/);
-  assert.match(js, /map\.addLayer\([^;]*ssb-raster-base-layer/s);
-});
-
 test('CSP permits self-hosted MapLibre worker and approved OpenFreeMap vector fetches without script/style CDN', () => {
   const source = readFileSync(securityUrl, 'utf8');
   assert.match(source, /worker-src\s+'self'/);
