@@ -76,3 +76,21 @@ test('bootstrap exposes only server-approved map style configuration', async () 
     styleUrl: 'https://approved.example/style.json'
   });
 });
+
+test('without an operator override bootstrap selects the trusted visible OpenFreeMap style', async () => {
+  const oldUrl = process.env.SITUATION_MAP_STYLE_URL;
+  const oldHosts = process.env.SITUATION_MAP_STYLE_ALLOWED_HOSTS;
+  delete process.env.SITUATION_MAP_STYLE_URL;
+  delete process.env.SITUATION_MAP_STYLE_ALLOWED_HOSTS;
+  try {
+    const { createSituationCenterService } = await import('../../src/situation-center/service.js');
+    const result = await createSituationCenterService(deps()).buildBootstrap(principal);
+    assert.deepEqual((result as any).mapStyle, {
+      external: true,
+      styleUrl: 'https://tiles.openfreemap.org/styles/liberty'
+    });
+  } finally {
+    if (oldUrl === undefined) delete process.env.SITUATION_MAP_STYLE_URL; else process.env.SITUATION_MAP_STYLE_URL = oldUrl;
+    if (oldHosts === undefined) delete process.env.SITUATION_MAP_STYLE_ALLOWED_HOSTS; else process.env.SITUATION_MAP_STYLE_ALLOWED_HOSTS = oldHosts;
+  }
+});
