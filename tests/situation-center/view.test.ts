@@ -63,15 +63,17 @@ test('dashboard exposes 3D entry and createServer mounts situation center API', 
   } finally { ctx.restore(); }
 });
 
-test('situation center CSS reserves a dominant map and safe 16:9 TV panels', () => {
+test('situation center CSS renders a full-bleed map with floating cinematic HUD panels', () => {
   assert.ok(existsSync(styleUrl), 'public/css/situation-center.css must exist');
   if (!existsSync(styleUrl)) return;
   const css = readFileSync(styleUrl, 'utf8');
   assert.match(css, /min-height\s*:\s*100(?:dvh|vh)/i);
-  assert.match(css, /\.situation-layout[\s\S]*grid-template-columns\s*:/i);
-  assert.match(css, /minmax\([^)]*1fr[^)]*\)|minmax\([^)]*,\s*2fr\)/i);
-  assert.match(css, /@media[^\{]*min-width\s*:\s*1900px/i);
-  assert.match(css, /\.situation-map-stage/i);
-  assert.match(css, /\.situation-fallback/i);
+  assert.match(css, /\.situation-layout\s*\{[^}]*position\s*:\s*absolute[^}]*inset\s*:\s*0/is);
+  assert.match(css, /\.situation-map-stage\s*\{[^}]*position\s*:\s*absolute[^}]*inset\s*:\s*0/is);
+  assert.match(css, /\.situation-left\s*\{[^}]*position\s*:\s*absolute[^}]*left\s*:/is);
+  assert.match(css, /\.situation-right\s*\{[^}]*position\s*:\s*absolute[^}]*right\s*:/is);
+  assert.match(css, /\.situation-panel\s*\{[^}]*overflow\s*:\s*hidden/is);
+  assert.match(css, /backdrop-filter\s*:\s*blur/i);
+  assert.match(css, /\.maplibregl-ctrl-top-right/i);
   assert.match(css, /@media[^\{]*max-width/i);
 });
