@@ -1,0 +1,155 @@
+/* Final light-theme precedence layer. Loaded last on purpose. */
+body[data-view-mode="light"]{background:#eef3f7!important;color:#173448!important;color-scheme:light!important}
+body[data-view-mode="light"] .app-shell,
+body[data-view-mode="light"] .workspace,
+body[data-view-mode="light"] .page-content{background:#eef3f7!important;color:#173448!important}
+
+body[data-view-mode="light"] .institution-drawer{
+  background:#f4f7f9!important;
+  color:#173448!important;
+  border-color:#d4e0e8!important;
+}
+body[data-view-mode="light"] .institution-drawer::before{
+  background:radial-gradient(circle at 16% -30%,rgba(40,208,184,.08),transparent 46%),radial-gradient(circle at 82% -45%,rgba(76,164,255,.08),transparent 40%)!important;
+}
+body[data-view-mode="light"] .institution-drawer .drawer-topbar{
+  background:rgba(255,255,255,.97)!important;
+  border-color:#dbe5eb!important;
+  color:#173448!important;
+}
+body[data-view-mode="light"] .institution-header .eyebrow{color:#118879!important}
+body[data-view-mode="light"] .institution-header h2{color:#173448!important}
+body[data-view-mode="light"] .institution-header p{color:#6e8393!important}
+body[data-view-mode="light"] .institution-drawer .icon-btn{
+  background:#fff!important;
+  border-color:#cfdce5!important;
+  color:#536d7f!important;
+}
+
+body[data-view-mode="light"] .drawer-commandbar{
+  background:#fff!important;
+  border-color:#dbe5eb!important;
+  color:#6f8494!important;
+}
+body[data-view-mode="light"] .drawer-breadcrumb strong{color:#173448!important}
+body[data-view-mode="light"] .drawer-breadcrumb span{color:#7890a0!important}
+
+body[data-view-mode="light"] .drawer-kpi-strip{
+  background:#f8fafb!important;
+  border-color:#dbe5eb!important;
+}
+body[data-view-mode="light"] .exec-kpi{
+  background:#fff!important;
+  border-color:#dce5ec!important;
+  box-shadow:0 8px 24px rgba(35,58,74,.06)!important;
+}
+body[data-view-mode="light"] .exec-kpi .kpi-label{color:#6f8595!important}
+body[data-view-mode="light"] .exec-kpi .kpi-value{color:#173448!important}
+body[data-view-mode="light"] .exec-kpi .kpi-meta{color:#8396a4!important}
+body[data-view-mode="light"] .exec-kpi .kpi-icon{background:#e4f5f1!important;color:#118879!important}
+body[data-view-mode="light"] .exec-kpi.blue .kpi-icon{background:#e7f1fb!important;color:#2d7fc7!important}
+body[data-view-mode="light"] .exec-kpi.amber .kpi-icon{background:#fff4db!important;color:#a36d00!important}
+body[data-view-mode="light"] .exec-kpi.muted .kpi-icon{background:#edf2f5!important;color:#60798a!important}
+
+body[data-view-mode="light"] .drawer-main{
+  background:#f4f7f9!important;
+  color:#173448!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-navigation{
+  background:#fff!important;
+  border-color:#dbe5eb!important;
+  scrollbar-color:#c8d6df transparent!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-category{
+  background:#fff!important;
+  color:#7890a0!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-navigation button{
+  background:transparent!important;
+  color:#617989!important;
+  border-color:transparent!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-navigation button::before{
+  background:#f3f6f8!important;
+  border-color:#9db1bf!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-navigation button:hover{
+  background:#eff5f7!important;
+  color:#173448!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-navigation button.active{
+  background:#e2f4f0!important;
+  border-color:#b9ded7!important;
+  color:#126d62!important;
+  box-shadow:inset 3px 0 0 #26bba6!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-navigation button.active::before{
+  background:#26bba6!important;
+  border-color:#26bba6!important;
+  box-shadow:none!important;
+}
+
+body[data-view-mode="light"] .institution-drawer .module-workspace{
+  background:radial-gradient(circle at 80% 0,rgba(29,130,170,.05),transparent 34%),#f4f7f9!important;
+  color:#173448!important;
+  scrollbar-color:#c8d6df transparent!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-summary{
+  border-color:#dbe5eb!important;
+}
+body[data-view-mode="light"] .institution-drawer .module-summary h2{color:#173448!important}
+body[data-view-mode="light"] .institution-drawer .module-summary p{color:#718797!important}
+body[data-view-mode="light"] .module-completeness strong{color:#526c7d!important}
+body[data-view-mode="light"] .module-progress{background:#dde7ed!important}
+body[data-view-mode="light"] .module-progress>i{background:linear-gradient(90deg,#20bda7,#4ca4ff)!important}
+
+body[data-view-mode="light"] .institution-drawer .metric{
+  background:#fff!important;
+  border-color:#dce5ec!important;
+  color:#173448!important;
+  box-shadow:0 8px 22px rgba(35,58,74,.055)!important;
+}
+body[data-view-mode="light"] .institution-drawer .metric:hover{
+  background:#fbfdfd!important;
+  border-color:#b9d6df!important;
+}
+body[data-view-mode="light"] .institution-drawer .metric::after{background:#c5d5df!important}
+body[data-view-mode="light"] .institution-drawer .metric:has(.source-badge.live)::after{background:#30bfa9!important}
+body[data-view-mode="light"] .institution-drawer .metric:has(.source-badge.manual)::after{background:#d6a83f!important}
+body[data-view-mode="light"] .institution-drawer .metric:has(.source-badge.imported)::after{background:#4b98df!important}
+body[data-view-mode="light"] .institution-drawer .metric .label{color:#6f8595!important}
+body[data-view-mode="light"] .institution-drawer .metric .value{color:#173448!important}
+body[data-view-mode="light"] .institution-drawer .metric .value.na{color:#8a9ca8!important}
+body[data-view-mode="light"] .institution-drawer .metric .value small{color:#748897!important}
+body[data-view-mode="light"] .institution-drawer .metric-source-note{color:#7a8f9f!important}
+body[data-view-mode="light"] .institution-drawer .edit-metric{
+  background:#e6f6f2!important;
+  border-color:#b8ddd6!important;
+  color:#126d62!important;
+}
+body[data-view-mode="light"] .institution-drawer .edit-metric:hover{background:#d9f1eb!important}
+body[data-view-mode="light"] .institution-drawer .empty{
+  background:#fff!important;
+  border-color:#cbd9e2!important;
+  color:#6f8595!important;
+}
+
+body[data-view-mode="light"] .metric-dialog{
+  background:#fff!important;
+  border-color:#cbd9e2!important;
+  color:#173448!important;
+}
+body[data-view-mode="light"] .metric-dialog::backdrop{background:rgba(20,36,48,.28)!important}
+body[data-view-mode="light"] .metric-dialog label{color:#657c8d!important}
+body[data-view-mode="light"] .metric-dialog input{
+  background:#f8fafb!important;
+  border-color:#d4e0e8!important;
+  color:#173448!important;
+}
+
+body[data-view-mode="light"] .status-badge,
+body[data-view-mode="light"] .source-badge{box-shadow:none!important}
+
+@media(max-width:820px){
+  body[data-view-mode="light"] .institution-drawer .module-navigation{border-bottom-color:#dbe5eb!important}
+}
