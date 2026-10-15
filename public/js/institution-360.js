@@ -96,7 +96,7 @@
     event.preventDefault();
     const submit=form.querySelector('[type="submit"]'); submit.disabled=true; submit.textContent='Saqlanmoqda...';
     try {
-      const payload={institutionId:form.elements.institutionId.value,metricKey:form.elements.metricKey.value,value:form.elements.value.value,unit:form.elements.unit.value};
+      const payload={institutionId:form.elements.institutionId.value,moduleKey:activeKey,metricKey:form.elements.metricKey.value,value:form.elements.value.value,unit:form.elements.unit.value};
       const response=await fetch('/api/admin/metrics',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify(payload)});
       if (response.status===401) return location.href='/login';
       if (!response.ok) throw new Error(`save_${response.status}`);
