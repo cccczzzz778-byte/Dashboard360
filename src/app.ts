@@ -10,7 +10,7 @@ import { SessionManager, hashPassword, verifyPassword } from './auth/session.js'
 import { requireAuth, requireCsrf, requireRole, readSessionToken, sessionCookieName } from './auth/middleware.js';
 import { buildInstitutionModules, metricExists, moduleDefinitions } from './domain/modules.js';
 import { mergeNamespacedMetrics, namespacedMetricKey } from './domain/metric-namespace.js';
-import { audit } from './audit/log.js';
+import { createAuditRecorder } from './audit/store.js';
 import { catalogByDistrict, catalogInstitution, districts, institutionCatalog, integrations } from './catalog.js';
 import type { Institution, InstitutionMetric } from './domain/institution.js';
 import { securityHeaders, sameOriginGuard, requestFingerprint } from './security/http.js';
@@ -38,6 +38,7 @@ export function createServer(options: {
 
   const sessions = options.sessionManager ?? new SessionManager();
   const pool = options.pool ?? (process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : undefined);
+  const auditRecorder = createAuditRecorder(pool ? { query: (sql, values) => pool.query(sql, values as any[]) } : undefined);
 
   const redisClient = options.redisClient ?? (process.env.REDIS_URL ? createClient({ url: process.env.REDIS_URL }) : undefined);
   if (redisClient && !options.redisClient) {
@@ -50,6 +51,7 @@ export function createServer(options: {
   }
   app.locals.redisClient = redisClient;
   app.locals.pool = pool;
+  app.locals.auditRecorder = auditRecorder;
 
   const loginLimiter: LoginLimiter = options.loginLimiter ?? (
     redisClient
@@ -59,7 +61,7 @@ export function createServer(options: {
 
   const repo = pool ? createInstitutionRepository(pool) : undefined;
   const dbReady = pool ? ensureSchema(pool, institutionCatalog).catch(error => {
-    console.error(JSON.stringify({ type: 'database_bootstrap_error', message: error?.message ?? String(error) }));
+    console.error(JSON.stringify({ type: 'database_bootstrap_error', code: error?.code ?? 'database_error' }));
   }) : Promise.resolve();
 
   const sourceStates = () => [
@@ -112,10 +114,11 @@ export function createServer(options: {
     const username = String(req.body.username ?? '').slice(0, 120);
     const password = String(req.body.password ?? '').slice(0, 500);
     const ipKey = req.ip || req.socket.remoteAddress || 'unknown';
+    const client = requestFingerprint(req);
     const rate = await loginLimiter.check(ipKey, username);
     if (!rate.allowed) {
       res.setHeader('Retry-After', String(rate.retryAfterSeconds));
-      audit('login_throttled', { username: username || 'empty', client: requestFingerprint(req) });
+      void auditRecorder.record('login_throttled', { username: username || 'empty', client });
       return res.status(429).send(loginHtml('Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring.'));
     }
 
@@ -126,13 +129,13 @@ export function createServer(options: {
 
     if (!valid) {
       await loginLimiter.fail(ipKey, username);
-      audit('login_failed', { username: username || 'empty', client: requestFingerprint(req) });
+      void auditRecorder.record('login_failed', { username: username || 'empty', client });
       return res.status(401).send(loginHtml('Login yoki parol xato'));
     }
 
     await loginLimiter.success(ipKey, username);
     const token = sessions.create({ username: configuredUser, role: 'admin' });
-    audit('login', { username: configuredUser, client: requestFingerprint(req) });
+    void auditRecorder.record('login', { username: configuredUser, client });
     const cookieName = sessionCookieName();
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     res.setHeader('Set-Cookie', `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800; Priority=High${secure}`);
@@ -141,7 +144,9 @@ export function createServer(options: {
 
   app.get('/logout', (req, res) => {
     const token = readSessionToken(req.headers.cookie ?? '');
+    const session = sessions.get(token);
     if (token) sessions.destroy(token);
+    void auditRecorder.record('logout', { username: session?.username ?? 'unknown', client: requestFingerprint(req) });
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     res.append('Set-Cookie', `${sessionCookieName()}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
     res.append('Set-Cookie', `ssb360=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
@@ -215,10 +220,16 @@ export function createServer(options: {
     const value = rawValue == null || rawValue === '' ? null : String(rawValue).slice(0, 200);
     try {
       const saved = await upsertManualMetric(pool, { institutionId, metricKey: namespacedMetricKey(moduleKey, metricKey), value, unit });
-      audit('metric_upsert', { institutionId, moduleKey, metricKey, username: (req as any).session?.username });
+      void auditRecorder.record('metric_upsert', {
+        institutionId,
+        moduleKey,
+        metricKey,
+        username: (req as any).session?.username,
+        client: requestFingerprint(req)
+      });
       res.json({ ok: true, metric: saved });
     } catch (error: any) {
-      console.error(JSON.stringify({ type: 'metric_upsert_error', message: error?.message ?? String(error) }));
+      console.error(JSON.stringify({ type: 'metric_upsert_error', code: error?.code ?? 'save_failed' }));
       res.status(500).json({ code: 'save_failed' });
     }
   });
