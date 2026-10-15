@@ -12,6 +12,7 @@ export function dashboardHtml() {
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/map.css">
+  <link rel="stylesheet" href="/css/institution-pro.css">
 </head>
 <body>
 <div class="app-shell">
