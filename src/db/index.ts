@@ -92,6 +92,29 @@ export async function listLatestMetrics(pool: Pool, institutionId: string): Prom
   return result.rows;
 }
 
+export async function listMetricTrend(pool: Pool, input: {
+  institutionIds: string[];
+  metricKey: string;
+  from: string;
+  to: string;
+}) {
+  if (input.institutionIds.length !== 1) return [];
+  const result = await pool.query(
+    `select period::text as period, metric_value as "metricValue", source_type as "sourceState"
+       from institution_metrics
+      where institution_id=$1 and metric_key=$2 and period >= $3::date and period <= $4::date
+        and source_type <> 'unavailable'
+      order by period asc, fetched_at asc`,
+    [input.institutionIds[0], input.metricKey, input.from, input.to]
+  );
+  return result.rows.flatMap(row => {
+    if (row.metricValue == null || row.metricValue === '') return [];
+    const value = Number(String(row.metricValue).trim().replace(/\s+/g, ''));
+    if (!Number.isFinite(value)) return [];
+    return [{ period: String(row.period).slice(0, 10), value, sourceState: row.sourceState ?? null }];
+  });
+}
+
 export async function upsertManualMetric(pool: Pool, input: { institutionId: string; metricKey: string; value: string | number | null; unit?: string | null }) {
   const result = await pool.query(
     `insert into institution_metrics(institution_id, metric_key, metric_value, unit, source_type, source_name, period, fetched_at)
