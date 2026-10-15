@@ -3,7 +3,7 @@ import * as maplibregl from '/vendor/maplibre/maplibre-gl.mjs';
 maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 
 const $ = id => document.getElementById(id);
-const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
 const displayValue = value => value == null || value === '' ? 'N/A' : String(value);
 const riskTone = severity => severity === 'red' ? 'red' : severity === 'amber' ? 'amber' : severity === 'green' ? 'green' : severity === 'unavailable' ? 'neutral' : 'neutral';
 const accuracyLabel = accuracy => ({
@@ -42,7 +42,9 @@ const state = {
   map: null,
   selectedInstitutionId: null,
   selectedDistrictKey: null,
-  trendMetric: 'kpi.score'
+  trendMetric: 'kpi.score',
+  presentationTimer: null,
+  presentationIndex: 0
 };
 
 function featureCollection(institutions) {
@@ -71,8 +73,7 @@ function featureCollection(institutions) {
 }
 
 function currentInstitutions() {
-  const rows = state.context?.institutions ?? state.bootstrap?.institutions ?? [];
-  return rows;
+  return state.context?.institutions ?? state.bootstrap?.institutions ?? [];
 }
 
 function renderInstitutionCard(item) {
@@ -281,6 +282,15 @@ function initInstitutionLayers(map, bootstrap) {
   });
 }
 
+function supportsWebGL() {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+  } catch {
+    return false;
+  }
+}
+
 function initMap(bootstrap) {
   const map = new maplibregl.Map({
     container: 'situationMap',
@@ -307,6 +317,50 @@ function showFallback(message) {
   renderDistrictNavigator(state.context);
 }
 
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      return;
+    }
+    const target = document.documentElement;
+    if (target?.requestFullscreen) await target.requestFullscreen();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function stopPresentation() {
+  if (state.presentationTimer) {
+    clearInterval(state.presentationTimer);
+    state.presentationTimer = null;
+  }
+  const button = $('situationPresentation');
+  if (button) {
+    button.textContent = 'Taqdimot';
+    button.setAttribute('aria-pressed', 'false');
+  }
+}
+
+function startPresentation(intervalMs = 20000) {
+  stopPresentation();
+  const districts = () => state.bootstrap?.districts ?? [];
+  const cycle = () => {
+    const rows = districts();
+    if (!rows.length) return;
+    const district = rows[state.presentationIndex % rows.length];
+    state.presentationIndex = (state.presentationIndex + 1) % rows.length;
+    void focusDistrict(district.key);
+  };
+  cycle();
+  state.presentationTimer = setInterval(cycle, intervalMs);
+  const button = $('situationPresentation');
+  if (button) {
+    button.textContent = 'Taqdimotni to‘xtatish';
+    button.setAttribute('aria-pressed', 'true');
+  }
+}
+
 function wirePanelClicks() {
   document.addEventListener('click', event => {
     const institutionId = event.target.closest('[data-focus-institution]')?.dataset.focusInstitution;
@@ -316,9 +370,20 @@ function wirePanelClicks() {
   });
 }
 
+function wirePresentationControls() {
+  $('situationFullscreen')?.addEventListener('click', () => { void toggleFullscreen(); });
+  $('situationPresentation')?.addEventListener('click', () => {
+    if (state.presentationTimer) stopPresentation();
+    else startPresentation(20000);
+  });
+  document.addEventListener('pointerdown', stopPresentation, { passive: true });
+  document.addEventListener('keydown', stopPresentation);
+}
+
 async function boot() {
   const status = $('situationStatus');
   wirePanelClicks();
+  wirePresentationControls();
   try {
     const response = await fetch('/api/v1/situation-center/bootstrap', { headers: { accept: 'application/json' } });
     if (response.status === 401) { location.href = '/login'; return; }
@@ -328,6 +393,10 @@ async function boot() {
     renderPanels(state.context);
     void loadTrend();
     if (status) status.textContent = `Yangilandi · ${new Date(state.bootstrap.generatedAt).toLocaleString('uz-UZ')}`;
+    if (!supportsWebGL()) {
+      showFallback('WebGL mavjud emas. Rahbar panellari va ro‘yxat rejimi ishlashda davom etadi.');
+      return;
+    }
     try {
       initMap(state.bootstrap);
     } catch (error) {
@@ -341,5 +410,5 @@ async function boot() {
   }
 }
 
-window.SSB360Situation = { focusDistrict, focusInstitution, renderPanels };
+window.SSB360Situation = { focusDistrict, focusInstitution, renderPanels, supportsWebGL, toggleFullscreen, startPresentation, stopPresentation };
 boot();
