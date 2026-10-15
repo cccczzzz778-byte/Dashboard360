@@ -25,7 +25,8 @@ export function requireAuth(manager: SessionBackend) {
     const token = readSessionToken(req.headers.cookie ?? '');
     const session = await manager.get(token) as any;
     if (!session) {
-      if (req.path.startsWith('/api/')) return res.status(401).json({ code: 'auth_required' });
+      const apiRequest = req.originalUrl.startsWith('/api/') || req.path.startsWith('/api/');
+      if (apiRequest) return res.status(401).json({ code: 'auth_required' });
       return res.redirect('/login');
     }
     (req as any).session = session;
