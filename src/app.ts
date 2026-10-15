@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { Pool } from 'pg';
+import { createClient } from 'redis';
 import { createInstitutionRepository, ensureSchema, listLatestMetrics, upsertManualMetric } from './db/index.js';
 import { normalizeDistrictName } from './map/district-map.js';
 import { dashboardHtml } from './views/dashboard.js';
@@ -13,13 +14,19 @@ import { audit } from './audit/log.js';
 import { catalogByDistrict, catalogInstitution, districts, institutionCatalog, integrations } from './catalog.js';
 import type { Institution, InstitutionMetric } from './domain/institution.js';
 import { securityHeaders, sameOriginGuard, requestFingerprint } from './security/http.js';
-import { LoginRateLimiter } from './security/rate-limit.js';
+import { LoginRateLimiter, type LoginLimiter } from './security/rate-limit.js';
+import { RedisLoginRateLimiter } from './security/redis-rate-limit.js';
 
 export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
 }
 
-export function createServer(options: { pool?: Pool; sessionManager?: SessionManager; loginLimiter?: LoginRateLimiter } = {}) {
+export function createServer(options: {
+  pool?: Pool;
+  sessionManager?: SessionManager;
+  loginLimiter?: LoginLimiter;
+  redisClient?: ReturnType<typeof createClient>;
+} = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
@@ -30,8 +37,26 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
   app.use(express.static(resolvePublicDir(), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
 
   const sessions = options.sessionManager ?? new SessionManager();
-  const loginLimiter = options.loginLimiter ?? new LoginRateLimiter();
   const pool = options.pool ?? (process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : undefined);
+
+  const redisClient = options.redisClient ?? (process.env.REDIS_URL ? createClient({ url: process.env.REDIS_URL }) : undefined);
+  if (redisClient && !options.redisClient) {
+    redisClient.on('error', (error: any) => {
+      console.error(JSON.stringify({ type: 'redis_error', code: error?.code ?? 'redis_error' }));
+    });
+    void redisClient.connect().catch((error: any) => {
+      console.error(JSON.stringify({ type: 'redis_connect_error', code: error?.code ?? 'redis_error' }));
+    });
+  }
+  app.locals.redisClient = redisClient;
+  app.locals.pool = pool;
+
+  const loginLimiter: LoginLimiter = options.loginLimiter ?? (
+    redisClient
+      ? new RedisLoginRateLimiter({ sendCommand: args => redisClient.sendCommand(args) })
+      : new LoginRateLimiter()
+  );
+
   const repo = pool ? createInstitutionRepository(pool) : undefined;
   const dbReady = pool ? ensureSchema(pool, institutionCatalog).catch(error => {
     console.error(JSON.stringify({ type: 'database_bootstrap_error', message: error?.message ?? String(error) }));
@@ -39,6 +64,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
 
   const sourceStates = () => [
     { key: 'database', label: 'PostgreSQL', status: pool ? 'configured' : 'unavailable' },
+    { key: 'redis', label: 'Redis xavfsizlik qatlami', status: redisClient ? 'configured' : 'unavailable' },
     { key: 'kpi', label: 'KPI platforma', status: process.env.KPI_API_URL ? 'configured' : 'unavailable' },
     { key: 'appeals', label: 'Murojaatlar', status: process.env.APPEALS_API_URL ? 'configured' : 'unavailable' },
     { key: 'qr', label: 'QR baholash', status: process.env.QR_API_URL ? 'configured' : 'unavailable' },
@@ -86,7 +112,7 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
     const username = String(req.body.username ?? '').slice(0, 120);
     const password = String(req.body.password ?? '').slice(0, 500);
     const ipKey = req.ip || req.socket.remoteAddress || 'unknown';
-    const rate = loginLimiter.check(ipKey, username);
+    const rate = await loginLimiter.check(ipKey, username);
     if (!rate.allowed) {
       res.setHeader('Retry-After', String(rate.retryAfterSeconds));
       audit('login_throttled', { username: username || 'empty', client: requestFingerprint(req) });
@@ -99,12 +125,12 @@ export function createServer(options: { pool?: Pool; sessionManager?: SessionMan
     else valid = false;
 
     if (!valid) {
-      loginLimiter.fail(ipKey, username);
+      await loginLimiter.fail(ipKey, username);
       audit('login_failed', { username: username || 'empty', client: requestFingerprint(req) });
       return res.status(401).send(loginHtml('Login yoki parol xato'));
     }
 
-    loginLimiter.success(ipKey, username);
+    await loginLimiter.success(ipKey, username);
     const token = sessions.create({ username: configuredUser, role: 'admin' });
     audit('login', { username: configuredUser, client: requestFingerprint(req) });
     const cookieName = sessionCookieName();
