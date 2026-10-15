@@ -7,6 +7,7 @@ import type { StoredRisk } from '../risk/repository.js';
 import type { StoredAlert } from '../alerts/repository.js';
 import type { IntegrationHealth } from '../integrations/repository.js';
 import type { UserPrincipal } from '../auth/types.js';
+import { createExecutiveTodayService } from '../executive/service.js';
 
 export type EnterpriseRouterDeps = {
   sessionBackend: SessionBackend;
@@ -38,6 +39,12 @@ function principal(req: any): UserPrincipal | null {
 export function createEnterpriseRouter(deps: EnterpriseRouterDeps) {
   const router = Router();
   const auth = requireAuth(deps.sessionBackend);
+  const executiveToday = deps.executiveToday ?? createExecutiveTodayService({
+    institutions: deps.institutions,
+    risk: deps.risk,
+    alerts: deps.alerts,
+    integrations: deps.integrations
+  });
 
   router.get('/risk', auth, requirePermission('institution.view'), async (req, res) => {
     const actor = principal(req);
@@ -91,8 +98,7 @@ export function createEnterpriseRouter(deps: EnterpriseRouterDeps) {
   router.get('/executive/today', auth, requirePermission('institution.view'), async (req, res) => {
     const actor = principal(req);
     if (!actor) return res.status(403).json({ code: 'forbidden' });
-    if (!deps.executiveToday) return res.status(503).json({ code: 'not_ready' });
-    res.json(await deps.executiveToday.build(actor));
+    res.json(await executiveToday.build(actor));
   });
 
   return router;
