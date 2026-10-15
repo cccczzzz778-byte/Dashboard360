@@ -5,7 +5,8 @@ RUN npm install
 COPY tsconfig.json ./
 COPY src ./src
 COPY public ./public
-RUN npm run build
+COPY tests ./tests
+RUN npm test && npm run build
 ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["node","dist/src/server.js"]
