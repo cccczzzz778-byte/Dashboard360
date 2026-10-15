@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import { createServer } from '../../src/app.js';
 import { SessionManager } from '../../src/auth/session.js';
-import type { InstitutionRepository } from '../../src/db/index.js';
 
 const institution = { id: 'buxoro-001', officialName: 'Buxoro shahar tibbiyot birlashmasi', type: 'SHTB', districtKey: 'buxoro-shahar', address: null, leaderName: null, phone: null, latitude: null, longitude: null };
+void institution;
 
 test('protected dashboard redirects unauthenticated users to login', async () => {
   const app = createServer({ sessionManager: new SessionManager() });
@@ -18,10 +18,17 @@ test('authenticated institution endpoint can return empty district without fake 
   assert.equal(health.status, 200);
 });
 
-test('360 module set renders unavailable values as N/A in the browser contract', async () => {
+test('360 module set renders the full monitoring surface and unavailable values remain N/A-ready', async () => {
   const { buildUnavailableModules } = await import('../../src/domain/modules.js');
   const modules = buildUnavailableModules();
-  assert.equal(modules.length, 10);
-  assert.equal(modules[0].metrics[0].value, null);
-  assert.equal(modules[0].metrics[0].sourceStatus, 'unavailable');
+  assert.ok(modules.length >= 25);
+  assert.ok(modules.some(x => x.key === 'dmed'));
+  assert.ok(modules.some(x => x.key === 'finance'));
+  assert.ok(modules.some(x => x.key === 'mortality'));
+  for (const module of modules) {
+    for (const metric of module.metrics) {
+      assert.equal(metric.value, null);
+      assert.equal(metric.sourceStatus, 'unavailable');
+    }
+  }
 });
