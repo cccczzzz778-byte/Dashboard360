@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import type { Institution, InstitutionMetric } from '../domain/institution.js';
+import { ensureEnterpriseSchema } from './enterprise-schema.js';
 
 export type InstitutionRepository = {
   listAll(): Promise<Institution[]>;
@@ -65,6 +66,9 @@ export async function ensureSchema(pool: Pool, institutions: Institution[]) {
     create index if not exists audit_events_created_idx on audit_events(created_at desc);
     create index if not exists audit_events_type_idx on audit_events(event_type, created_at desc);
   `);
+
+  await ensureEnterpriseSchema(pool);
+
   for (const institution of institutions) {
     await pool.query(
       `insert into institutions(id, official_name, type, district_key, address, leader_name, phone, latitude, longitude, location_accuracy)

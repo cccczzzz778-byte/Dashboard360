@@ -7,16 +7,24 @@ import { normalizeDistrictName } from './map/district-map.js';
 import { dashboardHtml } from './views/dashboard.js';
 import { loginHtml } from './views/login.js';
 import { SessionManager, hashPassword, verifyPassword } from './auth/session.js';
-import { requireAuth, requireCsrf, requireRole, readSessionToken, sessionCookieName } from './auth/middleware.js';
+import { SessionStore } from './auth/session-store.js';
+import { requireAuth, requireCsrf, readSessionToken, sessionCookieName } from './auth/middleware.js';
+import { canAccessInstitution, filterInstitutionsForPrincipal, principalFromSession, requirePermission } from './auth/authorization.js';
+import { createUserRepository } from './users/repository.js';
 import { buildInstitutionModules, metricExists, moduleDefinitions } from './domain/modules.js';
 import { mergeNamespacedMetrics, namespacedMetricKey } from './domain/metric-namespace.js';
 import { createAuditRecorder } from './audit/store.js';
 import { catalogByDistrict, catalogInstitution, districts, institutionCatalog, integrations } from './catalog.js';
 import type { Institution, InstitutionMetric } from './domain/institution.js';
+import type { UserPrincipal } from './auth/types.js';
 import { securityHeaders, sameOriginGuard, requestFingerprint } from './security/http.js';
 import { LoginRateLimiter, type LoginLimiter } from './security/rate-limit.js';
 import { RedisLoginRateLimiter } from './security/redis-rate-limit.js';
 import { checkReadiness } from './health/readiness.js';
+import { createRiskRepository } from './risk/repository.js';
+import { createAlertRepository } from './alerts/repository.js';
+import { createIntegrationRepository } from './integrations/repository.js';
+import { createEnterpriseRouter } from './enterprise/router.js';
 
 export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
@@ -46,8 +54,13 @@ export function createServer(options: {
   }));
   app.use(express.static(resolvePublicDir(), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
 
-  const sessions = options.sessionManager ?? new SessionManager();
   const pool = options.pool ?? (process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : undefined);
+  const memorySessions = options.sessionManager ?? new SessionManager();
+  const persistentSessions = pool && process.env.NODE_ENV === 'production' && !options.sessionManager
+    ? new SessionStore(pool)
+    : undefined;
+  const sessions = persistentSessions ?? memorySessions;
+  const userRepo = pool ? createUserRepository(pool) : undefined;
   const auditRecorder = createAuditRecorder(pool ? { query: (sql, values) => pool.query(sql, values as any[]) } : undefined);
 
   const redisClient = options.redisClient ?? (process.env.REDIS_URL ? createClient({ url: process.env.REDIS_URL }) : undefined);
@@ -62,6 +75,7 @@ export function createServer(options: {
   app.locals.redisClient = redisClient;
   app.locals.pool = pool;
   app.locals.auditRecorder = auditRecorder;
+  app.locals.sessionBackend = sessions;
 
   const loginLimiter: LoginLimiter = options.loginLimiter ?? (
     redisClient
@@ -114,6 +128,29 @@ export function createServer(options: {
     return mergeNamespacedMetrics(buildInstitutionModules(institution), metrics);
   }
 
+  function requestPrincipal(req: express.Request) {
+    return (req as any).principal ?? principalFromSession((req as any).session);
+  }
+
+  const riskRepo = pool ? createRiskRepository(pool) : {
+    async listLatest() { return []; },
+    async latest(_institutionId: string) { return null; }
+  };
+  const alertRepo = pool ? createAlertRepository(pool) : {
+    async listActive() { return []; }
+  };
+  const integrationRepo = pool ? createIntegrationRepository(pool) : {
+    async listHealth() { return []; }
+  };
+
+  app.use('/api/v1', createEnterpriseRouter({
+    sessionBackend: sessions,
+    institutions: { listAll: allInstitutions, findById: findInstitution },
+    risk: riskRepo,
+    alerts: alertRepo,
+    integrations: integrationRepo
+  }));
+
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'buxoro-ssb-360' }));
 
   app.get('/api/ready', async (_req, res) => {
@@ -150,10 +187,32 @@ export function createServer(options: {
       return res.status(429).send(loginHtml('Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring.'));
     }
 
-    let valid = username === configuredUser;
-    if (valid && configuredHash) valid = await verifyPassword(password, configuredHash);
-    else if (valid && process.env.NODE_ENV !== 'production' && legacyPassword) valid = password === legacyPassword;
-    else valid = false;
+    let valid = false;
+    let principal: UserPrincipal | null = null;
+
+    if (persistentSessions && userRepo) {
+      await dbReady;
+      if (configuredHash && username === configuredUser) {
+        try {
+          await userRepo.ensureBootstrapAdmin({ username: configuredUser, passwordHash: configuredHash });
+        } catch (error: any) {
+          console.error(JSON.stringify({ type: 'bootstrap_admin_error', code: error?.code ?? 'bootstrap_admin_error' }));
+        }
+      }
+      const account = await userRepo.findByUsername(username);
+      if (account) {
+        valid = await verifyPassword(password, account.passwordHash);
+        if (valid) {
+          const { passwordHash: _passwordHash, isActive: _isActive, ...safePrincipal } = account;
+          principal = safePrincipal;
+        }
+      }
+    } else {
+      valid = username === configuredUser;
+      if (valid && configuredHash) valid = await verifyPassword(password, configuredHash);
+      else if (valid && process.env.NODE_ENV !== 'production' && legacyPassword) valid = password === legacyPassword;
+      else valid = false;
+    }
 
     if (!valid) {
       await loginLimiter.fail(ipKey, username);
@@ -162,18 +221,28 @@ export function createServer(options: {
     }
 
     await loginLimiter.success(ipKey, username);
-    const token = sessions.create({ username: configuredUser, role: 'admin' });
-    void auditRecorder.record('login', { username: configuredUser, client });
+    let token: string;
+    if (persistentSessions && principal) {
+      const created = await persistentSessions.create(principal, { clientFingerprint: client });
+      token = created.token;
+    } else {
+      token = memorySessions.create({ username: configuredUser, role: 'admin' });
+    }
+
+    void auditRecorder.record('login', { username, client });
     const cookieName = sessionCookieName();
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     res.setHeader('Set-Cookie', `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800; Priority=High${secure}`);
     res.redirect('/');
   });
 
-  app.get('/logout', (req, res) => {
+  app.get('/logout', async (req, res) => {
     const token = readSessionToken(req.headers.cookie ?? '');
-    const session = sessions.get(token);
-    if (token) sessions.destroy(token);
+    const session = await sessions.get(token) as any;
+    if (token) {
+      if (persistentSessions) await persistentSessions.revoke(token);
+      else memorySessions.destroy(token);
+    }
     void auditRecorder.record('logout', { username: session?.username ?? 'unknown', client: requestFingerprint(req) });
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     res.append('Set-Cookie', `${sessionCookieName()}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
@@ -183,8 +252,9 @@ export function createServer(options: {
 
   app.get('/', requireAuth(sessions), (_req, res) => res.send(dashboardHtml()));
 
-  app.get('/api/bootstrap', requireAuth(sessions), async (req, res) => {
-    const institutions = await allInstitutions();
+  app.get('/api/bootstrap', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
+    const principal = requestPrincipal(req);
+    const institutions = filterInstitutionsForPrincipal(principal, await allInstitutions());
     const sources = sourceStates();
     const session = (req as any).session;
     res.json({
@@ -197,7 +267,7 @@ export function createServer(options: {
       security: { csrfToken: session.csrfToken, role: session.role },
       summary: {
         institutions: institutions.length,
-        districts: districts.length,
+        districts: new Set(institutions.map(x => x.districtKey)).size,
         configuredSources: sources.filter(x => x.status !== 'unavailable').length,
         totalSources: sources.length
       },
@@ -208,16 +278,17 @@ export function createServer(options: {
     });
   });
 
-  app.get('/api/institutions', requireAuth(sessions), async (req, res) => {
+  app.get('/api/institutions', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
+    const principal = requestPrincipal(req);
     const raw = String(req.query.district ?? '');
-    if (!raw) return res.json(await allInstitutions());
-    const district = normalizeDistrictName(raw);
-    res.json(await byDistrict(district));
+    const rows = raw ? await byDistrict(normalizeDistrictName(raw)) : await allInstitutions();
+    res.json(filterInstitutionsForPrincipal(principal, rows));
   });
 
-  app.get('/api/institutions/:id/summary', requireAuth(sessions), async (req, res) => {
+  app.get('/api/institutions/:id/summary', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
     const institution = await findInstitution(String(req.params.id));
     if (!institution) return res.status(404).json({ code: 'not_found' });
+    if (!canAccessInstitution(requestPrincipal(req), institution)) return res.status(403).json({ code: 'forbidden' });
     let metrics: InstitutionMetric[] = [];
     if (pool) {
       try { await dbReady; metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
@@ -225,9 +296,10 @@ export function createServer(options: {
     res.json({ institution, modules: modulesFor(institution, metrics), integrations });
   });
 
-  app.get('/api/modules/:institutionId', requireAuth(sessions), async (req, res) => {
+  app.get('/api/modules/:institutionId', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
     const institution = await findInstitution(String(req.params.institutionId));
     if (!institution) return res.status(404).json({ code: 'not_found' });
+    if (!canAccessInstitution(requestPrincipal(req), institution)) return res.status(403).json({ code: 'forbidden' });
     let metrics: InstitutionMetric[] = [];
     if (pool) {
       try { metrics = await listLatestMetrics(pool, institution.id); } catch { metrics = []; }
@@ -235,7 +307,7 @@ export function createServer(options: {
     res.json({ institutionId: institution.id, modules: modulesFor(institution, metrics) });
   });
 
-  app.post('/api/admin/metrics', requireAuth(sessions), requireRole('admin'), requireCsrf(sessions), async (req, res) => {
+  app.post('/api/admin/metrics', requireAuth(sessions), requirePermission('metric.write'), requireCsrf(sessions), async (req, res) => {
     if (!pool) return res.status(503).json({ code: 'database_unavailable' });
     const institutionId = String(req.body.institutionId ?? '').slice(0, 120);
     const moduleKey = String(req.body.moduleKey ?? '').slice(0, 80);
@@ -244,7 +316,9 @@ export function createServer(options: {
     const unit = req.body.unit == null ? null : String(req.body.unit).slice(0, 50);
     const moduleExists = moduleDefinitions.some(x => x.key === moduleKey);
     if (!institutionId || !moduleExists || !metricKey || !metricExists(metricKey)) return res.status(400).json({ code: 'invalid_metric' });
-    if (!(await findInstitution(institutionId))) return res.status(404).json({ code: 'institution_not_found' });
+    const institution = await findInstitution(institutionId);
+    if (!institution) return res.status(404).json({ code: 'institution_not_found' });
+    if (!canAccessInstitution(requestPrincipal(req), institution)) return res.status(403).json({ code: 'forbidden' });
     const value = rawValue == null || rawValue === '' ? null : String(rawValue).slice(0, 200);
     try {
       const saved = await upsertManualMetric(pool, { institutionId, metricKey: namespacedMetricKey(moduleKey, metricKey), value, unit });
@@ -262,7 +336,7 @@ export function createServer(options: {
     }
   });
 
-  app.get('/api/integrations', requireAuth(sessions), (_req, res) => res.json({ integrations, sources: sourceStates() }));
+  app.get('/api/integrations', requireAuth(sessions), requirePermission('integrations.view'), (_req, res) => res.json({ integrations, sources: sourceStates() }));
 
   return app;
 }

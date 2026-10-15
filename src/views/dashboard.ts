@@ -1,4 +1,5 @@
 import { institution360Html } from './institution-360.js';
+import { executiveTodayHtml } from './executive-today.js';
 
 export function dashboardHtml() {
   return `<!doctype html>
@@ -14,13 +15,15 @@ export function dashboardHtml() {
   <link rel="stylesheet" href="/css/institution-pro.css?v=20261015-2">
   <link rel="stylesheet" href="/css/view-mode.css?v=20261015-3">
   <link rel="stylesheet" href="/css/light-mode-hardening.css?v=20261015-4">
+  <link rel="stylesheet" href="/css/executive-today.css?v=20261015-1">
 </head>
 <body data-view-mode="dark">
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand"><div class="brand-mark">+</div><div><strong>BUXORO SSB</strong><span>360° nazorat markazi</span></div></div>
     <nav class="sidebar-nav" aria-label="Asosiy menyu">
-      <button class="nav-item active" data-target="mapSection"><span>⌖</span>Xarita nazorati</button>
+      <button class="nav-item active" data-target="executiveTodaySection"><span>◎</span>Bugun</button>
+      <button class="nav-item" data-target="mapSection"><span>⌖</span>Xarita nazorati</button>
       <button class="nav-item" data-target="institutionsPanel"><span>▦</span>Muassasalar</button>
       <button class="nav-item" data-target="controlSection"><span>◈</span>Yo‘nalishlar</button>
       <button class="nav-item" data-target="integrationsSection"><span>⇄</span>Integratsiyalar</button>
@@ -44,6 +47,8 @@ export function dashboardHtml() {
     </header>
 
     <main class="page-content">
+      ${executiveTodayHtml()}
+
       <section class="summary-grid" aria-label="Umumiy ko‘rsatkichlar">
         <article class="summary-card"><div class="summary-icon teal">▦</div><div><span>Muassasalar</span><strong id="summaryInstitutions">—</strong><small>nazorat katalogida</small></div></article>
         <article class="summary-card"><div class="summary-icon blue">⌖</div><div><span>Hududlar</span><strong id="summaryDistricts">—</strong><small>tuman va shahar</small></div></article>
@@ -93,6 +98,7 @@ ${institution360Html()}
 <script src="/vendor/leaflet/leaflet.js"></script>
 <script src="/js/view-mode.js?v=20261015-3" defer></script>
 <script src="/js/map.js?v=20261015-2" defer></script>
+<script src="/js/executive-today.js?v=20261015-1" defer></script>
 <script src="/js/institution-360.js?v=20261015-2" defer></script>
 </body>
 </html>`;
