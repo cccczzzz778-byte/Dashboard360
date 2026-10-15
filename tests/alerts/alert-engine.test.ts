@@ -21,7 +21,7 @@ test('red and amber risk produce deterministic alerts while unavailable risk pro
   assert.deepEqual(missing, []);
 });
 
-test('integration health states produce stable source-specific alerts without fabricating healthy alerts', async () => {
+test('integration health states produce stable alerts only when there is evidence of a problem', async () => {
   if (!existsSync(engineUrl)) return assert.fail('src/alerts/engine.ts must exist');
   const { deriveAlerts } = await import('../../src/alerts/engine.js');
   const alerts = deriveAlerts({ institutionId: null, risk: null, integrations: [
@@ -37,6 +37,6 @@ test('integration health states produce stable source-specific alerts without fa
   assert.equal(alerts.find((x: any) => x.sourceKey === 'appeals')?.severity, 'critical');
   assert.equal(alerts.find((x: any) => x.sourceKey === 'dmed')?.severity, 'warning');
   assert.equal(alerts.find((x: any) => x.sourceKey === 'lab')?.severity, 'warning');
-  assert.equal(alerts.find((x: any) => x.sourceKey === 'never')?.severity, 'info');
+  assert.equal(alerts.some((x: any) => x.sourceKey === 'never'), false);
   assert.equal(new Set(alerts.map((x: any) => x.dedupKey)).size, alerts.length);
 });
