@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from '../../src/app.js';
 import { SessionManager } from '../../src/auth/session.js';
 
 const viewUrl = new URL('../../src/views/situation-center.ts', import.meta.url);
+const styleUrl = new URL('../../public/css/situation-center.css', import.meta.url);
 
 function cookieFrom(res: any) {
   const raw = res.headers['set-cookie'];
@@ -60,4 +61,17 @@ test('dashboard exposes 3D entry and createServer mounts situation center API', 
     assert.ok(Array.isArray(api.body.institutions));
     assert.ok(api.body.summary);
   } finally { ctx.restore(); }
+});
+
+test('situation center CSS reserves a dominant map and safe 16:9 TV panels', () => {
+  assert.ok(existsSync(styleUrl), 'public/css/situation-center.css must exist');
+  if (!existsSync(styleUrl)) return;
+  const css = readFileSync(styleUrl, 'utf8');
+  assert.match(css, /min-height\s*:\s*100(?:dvh|vh)/i);
+  assert.match(css, /\.situation-layout[\s\S]*grid-template-columns\s*:/i);
+  assert.match(css, /minmax\([^)]*1fr[^)]*\)|minmax\([^)]*,\s*2fr\)/i);
+  assert.match(css, /@media[^\{]*min-width\s*:\s*1900px/i);
+  assert.match(css, /\.situation-map-stage/i);
+  assert.match(css, /\.situation-fallback/i);
+  assert.match(css, /@media[^\{]*max-width/i);
 });
