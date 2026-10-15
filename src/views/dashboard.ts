@@ -14,6 +14,7 @@ export function dashboardHtml() {
   <link rel="stylesheet" href="/css/map.css?v=20261015-2">
   <link rel="stylesheet" href="/css/institution-pro.css?v=20261015-2">
   <link rel="stylesheet" href="/css/view-mode.css?v=20261015-3">
+  <link rel="stylesheet" href="/css/light-mode-hardening.css?v=20261015-4">
 </head>
 <body data-view-mode="dark">
 <div class="app-shell">
