@@ -22,6 +22,10 @@ export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
 }
 
+export function resolveLeafletDir(root = process.cwd()) {
+  return path.join(root, 'node_modules', 'leaflet', 'dist');
+}
+
 export function createServer(options: {
   pool?: Pool;
   sessionManager?: SessionManager;
@@ -35,6 +39,11 @@ export function createServer(options: {
   app.use(sameOriginGuard);
   app.use(express.urlencoded({ extended: false, limit: '64kb' }));
   app.use(express.json({ limit: '64kb' }));
+  app.use('/vendor/leaflet', express.static(resolveLeafletDir(), {
+    maxAge: process.env.NODE_ENV === 'production' ? '30d' : 0,
+    immutable: process.env.NODE_ENV === 'production',
+    fallthrough: false
+  }));
   app.use(express.static(resolvePublicDir(), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
 
   const sessions = options.sessionManager ?? new SessionManager();
