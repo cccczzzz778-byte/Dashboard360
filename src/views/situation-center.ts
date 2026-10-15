@@ -7,12 +7,16 @@ export function situationCenterHtml() {
   <meta name="theme-color" content="#031525">
   <title>Buxoro SSB 360 · 3D Situatsion markaz</title>
   <link rel="stylesheet" href="/vendor/maplibre/maplibre-gl.css">
-  <link rel="stylesheet" href="/css/situation-center.css?v=20261015-1">
+  <link rel="stylesheet" href="/css/situation-center.css?v=20261015-3">
+  <link rel="stylesheet" href="/css/situation-reference.css?v=20261015-3">
 </head>
 <body class="situation-center-page">
   <main class="situation-shell">
     <header class="situation-topbar">
-      <div><span>BUXORO VILOYATI SOG‘LIQNI SAQLASH</span><h1>3D SITUATSION MARKAZ</h1></div>
+      <div class="situation-title-center">
+        <span>3D SITUATSION MARKAZ</span>
+        <h1>BUXORO VILOYATI TIBBIYOT RESURSLARI</h1>
+      </div>
       <div class="situation-actions">
         <span id="situationStatus" role="status" aria-live="polite">Ma’lumot yuklanmoqda…</span>
         <button id="situationFullscreen" type="button">To‘liq ekran</button>
@@ -39,12 +43,14 @@ export function situationCenterHtml() {
 
       <aside class="situation-column situation-right">
         <section id="situationAlerts" class="situation-panel" aria-label="Kritik signallar"><h2>Kritik signallar</h2><div class="situation-loading">N/A</div></section>
-        <section id="situationActivity" class="situation-panel" aria-label="Joriy faoliyat"><h2>Joriy faoliyat</h2><div class="situation-loading">N/A</div></section>
+        <section id="situationRiskDistribution" class="situation-panel" aria-label="Risk taqsimoti"><h2>Risk taqsimoti</h2><div class="situation-loading">N/A</div></section>
+        <section id="situationToday" class="situation-panel" aria-label="Bugungi qabul"><h2>Bugungi qabul</h2><div class="situation-loading">N/A</div></section>
         <section id="situationTrend" class="situation-panel" aria-label="Trend"><h2>Trend</h2><div class="situation-loading">Ma’lumot yetarli emas</div></section>
       </aside>
     </section>
   </main>
-  <script type="module" src="/js/situation-center.js?v=20261015-1"></script>
+  <script type="module" src="/js/situation-center.js?v=20261015-3"></script>
+  <script type="module" src="/js/situation-reference.js?v=20261015-3"></script>
 </body>
 </html>`;
 }

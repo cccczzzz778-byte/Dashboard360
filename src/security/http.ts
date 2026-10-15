@@ -25,10 +25,12 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
   const mapOrigins = approvedSituationMapOrigins();
-  const connectSrc = "connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org" + (mapOrigins.length ? ` ${mapOrigins.join(' ')}` : '');
+  const defaultMapOrigins = ['https://tile.openstreetmap.org', 'https://*.tile.openstreetmap.org', 'https://tiles.openfreemap.org'];
+  const connectSrc = `connect-src 'self' ${[...defaultMapOrigins, ...mapOrigins].join(' ')}`;
+  const imgSrc = `img-src 'self' data: ${[...defaultMapOrigins, ...mapOrigins].join(' ')}`;
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; ${connectSrc}; worker-src 'self'; font-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`
+    `default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; ${imgSrc}; ${connectSrc}; worker-src 'self'; font-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`
   );
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

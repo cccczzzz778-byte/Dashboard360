@@ -13,28 +13,9 @@ const accuracyLabel = accuracy => ({
   unknown: 'Koordinata aniqligi tasdiqlanmagan'
 }[accuracy] ?? 'Koordinata aniqligi tasdiqlanmagan');
 
-const localRasterStyle = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '© OpenStreetMap contributors'
-    }
-  },
-  layers: [{
-    id: 'osm',
-    type: 'raster',
-    source: 'osm',
-    paint: {
-      'raster-saturation': -0.58,
-      'raster-contrast': 0.3,
-      'raster-brightness-min': 0.08,
-      'raster-brightness-max': 0.56
-    }
-  }]
-};
+const DEFAULT_VECTOR_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+const BUKHARA_CITY_CAMERA = { center: [64.4286, 39.7681], zoom: 13.35, pitch: 62, bearing: -18 };
+const REGION_CAMERA = { center: [64.34, 39.82], zoom: 8.35, pitch: 48, bearing: -12 };
 
 const state = {
   bootstrap: null,
@@ -116,10 +97,12 @@ function boundsFor(institutions) {
 async function focusDistrict(key) {
   if (!key) {
     state.selectedDistrictKey = null;
+    state.selectedInstitutionId = null;
     state.context = state.bootstrap;
+    setSelectedHalo(null);
     updateMapData(currentInstitutions());
     renderPanels(state.context);
-    state.map?.easeTo({ center: [64.34, 39.82], zoom: 8.35, pitch: 55, bearing: -12, duration: 700 });
+    state.map?.easeTo({ ...REGION_CAMERA, duration: 850 });
     await loadTrend();
     return;
   }
@@ -133,7 +116,7 @@ async function focusDistrict(key) {
   updateMapData(currentInstitutions());
   renderPanels(state.context);
   const bounds = boundsFor(currentInstitutions());
-  if (bounds && state.map) state.map.fitBounds(bounds, { padding: 90, maxZoom: 10.5, duration: 700 });
+  if (bounds && state.map) state.map.fitBounds(bounds, { padding: { top: 115, bottom: 90, left: 380, right: 380 }, maxZoom: 13.7, pitch: 58, bearing: -16, duration: 850 });
   await loadTrend();
 }
 
@@ -143,7 +126,7 @@ async function focusInstitution(id) {
   setSelectedHalo(id);
   renderInstitutionCard(item);
   if (state.map && Number.isFinite(item.longitude) && Number.isFinite(item.latitude)) {
-    state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 10.5), pitch: 58, duration: 700 });
+    state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 15.2), pitch: 64, bearing: -22, duration: 900 });
   }
   await loadTrend();
 }
@@ -247,6 +230,34 @@ async function loadTrend() {
   }
 }
 
+function addBuildingExtrusion(map) {
+  if (map.getLayer('ssb-buildings-3d')) return;
+  const style = map.getStyle();
+  const vectorSource = Object.entries(style.sources ?? {}).find(([, source]) => source?.type === 'vector');
+  if (!vectorSource) return;
+  const [sourceId] = vectorSource;
+  const firstSymbol = (style.layers ?? []).find(layer => layer.type === 'symbol')?.id;
+  const layer = {
+    id: 'ssb-buildings-3d',
+    type: 'fill-extrusion',
+    source: sourceId,
+    'source-layer': 'building',
+    minzoom: 13,
+    paint: {
+      'fill-extrusion-color': ['interpolate', ['linear'], ['zoom'], 13, '#123a59', 16, '#3c8faf'],
+      'fill-extrusion-height': ['coalesce', ['to-number', ['get', 'render_height']], ['to-number', ['get', 'height']], 8],
+      'fill-extrusion-base': ['coalesce', ['to-number', ['get', 'render_min_height']], ['to-number', ['get', 'min_height']], 0],
+      'fill-extrusion-opacity': 0.86,
+      'fill-extrusion-vertical-gradient': true
+    }
+  };
+  try {
+    map.addLayer(layer, firstSymbol);
+  } catch (error) {
+    console.warn('3D building layer unavailable', error);
+  }
+}
+
 function initInstitutionLayers(map, bootstrap) {
   map.addSource('institutions', { type: 'geojson', data: featureCollection(bootstrap.institutions ?? []) });
   map.addLayer({
@@ -255,11 +266,11 @@ function initInstitutionLayers(map, bootstrap) {
     source: 'institutions',
     filter: ['==', ['get', 'id'], '__none__'],
     paint: {
-      'circle-radius': 15,
-      'circle-color': 'rgba(40,224,255,.12)',
+      'circle-radius': 17,
+      'circle-color': 'rgba(40,224,255,.08)',
       'circle-stroke-color': '#28e0ff',
       'circle-stroke-width': 2.5,
-      'circle-blur': 0.25
+      'circle-blur': 0.3
     }
   });
   map.addLayer({
@@ -267,11 +278,11 @@ function initInstitutionLayers(map, bootstrap) {
     type: 'circle',
     source: 'institutions',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 5, 11, 9],
-      'circle-color': ['match', ['get', 'riskTone'], 'red', '#ff5d72', 'amber', '#ffc857', 'green', '#2ce7b0', '#5d8295'],
-      'circle-stroke-color': '#dffaff',
-      'circle-stroke-width': 1.25,
-      'circle-opacity': 0.96
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 5, 11, 7, 15, 10],
+      'circle-color': ['match', ['get', 'riskTone'], 'red', '#ff5d72', 'amber', '#ffc857', 'green', '#2ce7b0', '#35d8ff'],
+      'circle-stroke-color': '#eafcff',
+      'circle-stroke-width': 1.4,
+      'circle-opacity': 0.98
     }
   });
   map.on('mouseenter', 'institution-points', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -294,20 +305,21 @@ function supportsWebGL() {
 function initMap(bootstrap) {
   const style = bootstrap.mapStyle?.external && bootstrap.mapStyle.styleUrl
     ? bootstrap.mapStyle.styleUrl
-    : localRasterStyle;
+    : DEFAULT_VECTOR_STYLE;
   const map = new maplibregl.Map({
     container: 'situationMap',
     style,
-    center: [64.34, 39.82],
-    zoom: 8.35,
-    pitch: 55,
-    bearing: -12,
+    ...BUKHARA_CITY_CAMERA,
     antialias: true,
-    attributionControl: true
+    attributionControl: true,
+    maxPitch: 75
   });
   state.map = map;
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-  map.on('load', () => initInstitutionLayers(map, bootstrap));
+  map.on('load', () => {
+    addBuildingExtrusion(map);
+    initInstitutionLayers(map, bootstrap);
+  });
   return map;
 }
 
@@ -366,9 +378,11 @@ function startPresentation(intervalMs = 20000) {
 
 function wirePanelClicks() {
   document.addEventListener('click', event => {
-    const institutionId = event.target.closest('[data-focus-institution]')?.dataset.focusInstitution;
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const institutionId = target.closest('[data-focus-institution]')?.dataset.focusInstitution;
     if (institutionId) { void focusInstitution(institutionId); return; }
-    const districtButton = event.target.closest('[data-focus-district]');
+    const districtButton = target.closest('[data-focus-district]');
     if (districtButton) void focusDistrict(districtButton.dataset.focusDistrict ?? '');
   });
 }

@@ -1,0 +1,134 @@
+.situation-title-center {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  width: min(760px, 56vw);
+  text-align: center;
+  pointer-events: none;
+}
+
+.situation-title-center > span {
+  display: block;
+  color: #71ecff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .28em;
+  opacity: .82;
+}
+
+.situation-title-center h1 {
+  margin: 5px 0 0;
+  font-size: clamp(21px, 2vw, 35px);
+  letter-spacing: .11em;
+}
+
+.situation-right {
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+#situationRiskDistribution,
+#situationToday {
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-risk-distribution {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  min-height: 0;
+}
+
+.sc-risk-donut {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: conic-gradient(#5d9ab5 0deg 360deg);
+  box-shadow: 0 0 20px rgba(46, 229, 255, .18), inset 0 0 16px rgba(0, 0, 0, .28);
+}
+
+.sc-risk-donut::after {
+  content: "";
+  position: absolute;
+  inset: 19px;
+  border-radius: 50%;
+  background: rgba(2, 19, 34, .96);
+  border: 1px solid rgba(46, 229, 255, .22);
+}
+
+.sc-risk-donut-center {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #eafcff;
+  font-size: 17px;
+  font-weight: 760;
+}
+
+.sc-risk-legend {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.sc-risk-legend-row {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  color: var(--sc-muted);
+}
+
+.sc-risk-legend-row b {
+  color: #eafcff;
+  font-weight: 700;
+}
+
+.sc-today-wrap {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+  text-align: center;
+}
+
+.sc-today-number {
+  color: #f5fdff;
+  font-size: clamp(36px, 3.6vw, 62px);
+  line-height: .95;
+  font-weight: 300;
+  letter-spacing: .02em;
+  text-shadow: 0 0 22px rgba(46, 229, 255, .22);
+}
+
+.sc-today-caption {
+  margin-top: 8px;
+  color: var(--sc-muted);
+  font-size: 11px;
+}
+
+@media (max-height: 820px) and (min-width: 1181px) {
+  .situation-right { gap: 7px; }
+  .situation-panel { padding-top: 10px; padding-bottom: 10px; }
+  .sc-risk-donut { width: 82px; height: 82px; }
+  .sc-risk-donut::after { inset: 15px; }
+  .sc-risk-distribution { grid-template-columns: 88px minmax(0, 1fr); }
+  .sc-today-number { font-size: 38px; }
+}
+
+@media (max-width: 1180px) {
+  .situation-title-center {
+    position: static;
+    transform: none;
+    width: auto;
+    text-align: left;
+    pointer-events: auto;
+  }
+  .situation-right { grid-template-rows: none; }
+}
