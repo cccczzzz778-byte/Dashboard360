@@ -11,15 +11,16 @@ Until official read-only APIs are available for DMED, Ona-bola and other externa
 The system must let authorized users:
 
 1. enter structured indicators manually;
-2. import structured data from Excel/CSV;
-3. attach Word/PDF/TXT documents as evidence/reference material;
-4. validate and approve imported values before they affect dashboards;
-5. preserve who uploaded what, when, for which institution and period;
-6. retain revision history instead of silently overwriting prior submissions;
-7. show source provenance (`Manual`, `Excel import`, later `Live API`) on every published metric;
-8. compute statistics from approved structured values only;
-9. keep missing values as `N/A`, never fabricate zeroes;
-10. transition to API-based sources later without losing manual history.
+2. enter free-form written/narrative reports tied to an institution, module and period;
+3. import structured data from Excel/CSV;
+4. attach Word/PDF/TXT documents as evidence/reference material;
+5. validate and approve imported values before they affect dashboards;
+6. preserve who uploaded what, when, for which institution and period;
+7. retain revision history instead of silently overwriting prior submissions;
+8. show source provenance (`Manual`, `Excel import`, later `Live API`) on every published metric;
+9. compute statistics from approved structured values only;
+10. keep missing values as `N/A`, never fabricate zeroes;
+11. transition to API-based sources later without losing manual history.
 
 ## 2. Scope
 
@@ -28,16 +29,17 @@ The system must let authorized users:
 - New sidebar section: **Ma’lumot yuklash**.
 - Institution, reporting period and monitoring module selection.
 - Manual indicator entry.
+- Free-form written/narrative report entry.
 - Excel (`.xlsx`, `.xls`) and CSV (`.csv`) upload and parsing.
 - Word (`.docx`, `.doc`), PDF (`.pdf`) and text (`.txt`) attachment as evidence.
-- Upload validation and preview.
+- Upload quarantine, validation and preview.
 - Draft → validated → approved/rejected workflow.
 - File metadata, checksum, version history and audit trail.
 - Object-storage based file persistence.
-- Publishing approved rows into the existing 360° metric surface.
+- Publishing approved structured rows into the existing 360° metric surface.
 - Statistical aggregation with explicit aggregation rules.
 - RBAC and institution-scope enforcement.
-- Safe error handling and limits.
+- Safe error handling and resource limits.
 
 ### Out of scope for this phase
 
@@ -51,9 +53,9 @@ These can be added later as separate, explicitly approved phases.
 
 ## 3. Core Principle
 
-**Files are evidence; structured approved values are statistics.**
+**Files and narrative text are evidence/context; structured approved values are statistics.**
 
-A Word/PDF attachment must never automatically create a numeric KPI. Excel/CSV rows may be parsed into a staging area, but they affect dashboards only after validation and approval.
+A Word/PDF attachment or written report must never automatically create a numeric KPI. Excel/CSV rows may be parsed into a staging area, but they affect dashboards only after validation and approval.
 
 Missing data remains `N/A`. A file upload must never imply a value of `0`.
 
@@ -78,11 +80,12 @@ Required context:
 
 Input methods:
 
-1. **Qo‘lda kiritish**
-2. **Excel / CSV import**
-3. **Word / PDF / TXT hujjat biriktirish**
+1. **Qo‘lda ko‘rsatkich kiritish**
+2. **Yozma hisobot / izoh**
+3. **Excel / CSV import**
+4. **Word / PDF / TXT hujjat biriktirish**
 
-### 4.2 Manual entry
+### 4.2 Manual structured entry
 
 User selects institution, period and module, then fills:
 
@@ -94,7 +97,18 @@ User selects institution, period and module, then fills:
 
 The value is first stored as a draft revision. It becomes visible in production statistics only after approval.
 
-### 4.3 Excel/CSV import
+### 4.3 Written/narrative report
+
+User may enter a free-form written report for the selected institution/module/period.
+
+Narrative text:
+
+- is stored and versioned;
+- is searchable/displayable in the upload history;
+- may be used as management context;
+- does **not** participate in numeric statistics unless the user separately enters/approves structured indicators.
+
+### 4.4 Excel/CSV import
 
 Preferred template columns:
 
@@ -115,13 +129,13 @@ For non-standard spreadsheets, the user can map detected columns to the canonica
 
 Import stages:
 
-`Uploaded → Parsed → Preview → Validated → Approved → Published`
+`Uploaded → Quarantined/Scanned → Parsed → Preview → Validated → Approved → Published`
 
 Any invalid row remains unpublished and is shown with a clear error reason.
 
-### 4.4 Word/PDF/TXT attachment
+### 4.5 Word/PDF/TXT attachment
 
-Accepted as evidence/reference material. The user must still enter or approve the structured metrics separately.
+Accepted as evidence/reference material. The user must still enter or approve structured metrics separately.
 
 `.docx` may later support safe text preview. Legacy `.doc` is accepted as an attachment only in this phase.
 
@@ -139,8 +153,9 @@ New additive tables:
 - `institution_id text not null`
 - `module_key text not null`
 - `period date not null`
-- `method text not null` (`manual`, `excel`, `csv`, `document`)
-- `status text not null` (`draft`, `parsed`, `validated`, `approved`, `rejected`, `failed`)
+- `method text not null` (`manual`, `narrative`, `excel`, `csv`, `document`)
+- `status text not null` (`draft`, `quarantined`, `parsed`, `validated`, `approved`, `rejected`, `failed`)
+- `narrative_body text`
 - `created_by text not null`
 - `approved_by text`
 - `created_at timestamptz`
@@ -157,6 +172,9 @@ New additive tables:
 - `size_bytes bigint not null`
 - `sha256 text not null`
 - `extension text not null`
+- `scan_status text not null` (`pending`, `clean`, `rejected`, `error`)
+- `scan_engine text`
+- `scanned_at timestamptz`
 - `created_at timestamptz`
 
 No raw file bytes are stored in PostgreSQL.
@@ -229,7 +247,7 @@ Only approved staging rows are published.
 On publication:
 
 1. write immutable revision to `metric_revisions`;
-2. update `institution_metrics` as the current compatibility/latest value;
+2. update `institution_metrics` as the current compatibility/latest value using the selected reporting period, not `current_date` implicitly;
 3. preserve source metadata;
 4. create audit event;
 5. trigger risk/alert recomputation only after a successful transaction.
@@ -286,9 +304,13 @@ Files are stored in Railway-compatible S3/object storage, not the container file
 
 The application stores only metadata and an opaque storage key.
 
-Recommended bucket structure:
+Quarantine structure:
 
-`uploads/<institution>/<year>/<month>/<upload-id>/<safe-file-name>`
+`quarantine/<institution>/<upload-id>/<server-generated-file-name>`
+
+After successful scanning/validation, clean files may be moved/copied to:
+
+`uploads/<institution>/<year>/<month>/<upload-id>/<server-generated-file-name>`
 
 Original names are retained only as metadata; storage filenames are server-generated.
 
@@ -306,11 +328,12 @@ Allowed types:
 - `.pdf`
 - `.txt`
 
-Rejected examples:
+Explicitly rejected:
 
 - executables;
 - scripts;
 - HTML/SVG active content;
+- macro-enabled Office formats such as `.xlsm`, `.xltm`, `.docm`, `.dotm`;
 - archives in this phase (`.zip`, `.rar`, `.7z`);
 - files whose extension and detected MIME/type conflict materially.
 
@@ -322,27 +345,36 @@ Controls:
 - server-generated storage key;
 - SHA-256 checksum;
 - 30 MB hard limit;
-- bounded parser resources;
+- quarantine before parsing/download;
+- malware scan via a `FileScanner` abstraction (ClamAV or equivalent production adapter);
+- fail closed: files are not parsed, downloadable or publishable until scan status is `clean`;
+- bounded parser CPU/memory/time;
 - spreadsheet formula cells treated as data/formula metadata, never executed;
-- no macros executed;
+- no Office macros executed;
+- `.xlsx`/`.docx` archive expansion limits to mitigate zip/decompression bombs;
+- maximum workbook sheets, rows, columns and total cells;
 - no uploaded HTML rendered inline;
-- downloads served with safe `Content-Disposition`;
+- downloads served with safe `Content-Disposition: attachment`;
+- CSV/export values that begin with spreadsheet formula prefixes (`=`, `+`, `-`, `@`) are escaped on export to prevent formula injection;
 - RBAC and institution scope checked before upload and download;
-- audit log for upload, validation, approval, rejection, download and publication.
+- audit log for upload, scan, validation, approval, rejection, download and publication.
+
+If the malware scanner is unavailable, file uploads may be stored in quarantine but remain unusable until scanning succeeds.
 
 ## 10. Excel/CSV Validation
 
 Validation layers:
 
-1. file-level validation;
+1. file-level validation and clean scan requirement;
 2. sheet-level validation;
-3. row schema validation;
-4. metric key validation against `metric_definitions`;
-5. data-type validation;
-6. min/max range validation where configured;
-7. duplicate institution/metric/period detection;
-8. ratio denominator validation;
-9. user scope validation.
+3. bounded row/cell counts;
+4. row schema validation;
+5. metric key validation against `metric_definitions`;
+6. data-type validation;
+7. min/max range validation where configured;
+8. duplicate institution/metric/period detection;
+9. ratio denominator validation;
+10. user scope validation.
 
 The import preview shows:
 
@@ -352,13 +384,13 @@ The import preview shows:
 - total counts;
 - exact error reason per row.
 
-No partial silent import. Approved rows are explicit.
+No partial silent import. If an upload contains invalid rows, approval is blocked until they are corrected or the user explicitly creates a new clean subset/revision.
 
 ## 11. Approval Workflow
 
 Statuses:
 
-`draft → parsed → validated → approved`
+`draft → quarantined → parsed → validated → approved`
 
 Alternative endings:
 
@@ -367,6 +399,7 @@ Alternative endings:
 Rules:
 
 - uploader may save draft;
+- files must scan clean before parsing/approval;
 - validation may be automatic;
 - approval requires an authorized approver role/permission;
 - uploader and approver can initially be the same super-admin, but the data model supports separation;
@@ -393,6 +426,7 @@ Proposed endpoints:
 - `POST /api/v1/uploads`
 - `POST /api/v1/uploads/:id/file`
 - `POST /api/v1/uploads/:id/manual-row`
+- `POST /api/v1/uploads/:id/narrative`
 - `POST /api/v1/uploads/:id/parse`
 - `GET /api/v1/uploads/:id`
 - `GET /api/v1/uploads/:id/rows`
@@ -414,9 +448,10 @@ Top filters:
 - Davr
 - Modul
 
-Three action cards:
+Four action cards:
 
-- `Qo‘lda kiritish`
+- `Qo‘lda ko‘rsatkich`
+- `Yozma hisobot`
 - `Excel / CSV import`
 - `Word / PDF / TXT`
 
@@ -426,7 +461,7 @@ Upload list columns:
 - Davr
 - Modul
 - Usul
-- Fayl
+- Fayl / yozma ma’lumot
 - Holat
 - Yuklagan
 - Sana
@@ -453,16 +488,22 @@ Metric cards continue to show value plus provenance badge:
 - later `Jonli`
 - `N/A`
 
-History action shows revisions for the selected metric.
+History action shows revisions for the selected metric. Narrative/evidence history is available separately and is never mixed into numeric calculations.
 
-## 15. Object Storage Failure Behavior
+## 15. Object Storage / Scanner Failure Behavior
 
 If object storage is unavailable:
 
-- manual values without evidence can still be saved as draft if policy allows;
+- manual values and narrative text without evidence can still be saved as draft if policy allows;
 - file-based imports are not published;
 - upload status becomes `failed` or remains draft with a clear error;
 - no database record claims the file is safely stored when upload failed.
+
+If malware scanning is unavailable:
+
+- uploaded files remain quarantined;
+- parsing/download/publication are blocked;
+- user sees `Tekshiruv kutilmoqda` or scanner error, not a false success state.
 
 If database publication fails after file storage succeeds, the file remains unreferenced only until a cleanup/retry routine resolves it. Publication is transactional at database level.
 
@@ -471,10 +512,12 @@ If database publication fails after file storage succeeds, the file remains unre
 Likely implementation dependencies:
 
 - `multer` or equivalent bounded multipart handler;
-- `xlsx`-compatible parser for Excel;
+- an audited Excel parser supporting `.xlsx/.xls`;
 - CSV parser with strict limits;
 - optional safe `.docx` text extraction library only for preview, not statistics;
-- content-signature/MIME validation helper.
+- content-signature/MIME validation helper;
+- S3-compatible storage client;
+- malware scanner adapter/client.
 
 Dependency choice must pass the existing high-severity npm audit gate. If a package introduces unacceptable vulnerabilities, use a safer alternative or reduce scope.
 
@@ -484,6 +527,9 @@ New events include:
 
 - `upload_created`
 - `file_uploaded`
+- `file_scan_started`
+- `file_scan_clean`
+- `file_scan_rejected`
 - `upload_parsed`
 - `upload_validated`
 - `upload_approved`
@@ -499,6 +545,8 @@ This ingestion phase is designed for **institution-level aggregate operational s
 
 Do not upload patient-level exports containing JShShIR, passport numbers, phone numbers, medical record IDs or unnecessary personal health data.
 
+The upload UI must display a warning before file submission that patient-identifying data is not permitted in this phase.
+
 If a future workflow truly requires patient-level data, it must be designed as a separate privacy/security phase with explicit authorization and field-level controls.
 
 ## 19. Testing Strategy
@@ -509,19 +557,22 @@ Test groups:
 
 1. schema is additive;
 2. RBAC and direct-ID scope blocking;
-3. file extension/type/size rejection;
-4. checksum and storage-key generation;
-5. Excel/CSV parsing;
-6. formula cells are never executed;
-7. malformed rows stay unpublished;
-8. approval publishes only validated rows;
-9. revision history is immutable;
-10. correction creates new revision;
-11. percentage aggregation uses numerator/denominator;
-12. missing values remain `N/A`;
-13. audit events contain no secrets;
-14. object-storage failure does not publish data;
-15. current map/360/security regression suite remains green.
+3. narrative reports remain non-statistical;
+4. file extension/type/size rejection;
+5. quarantine and scanner fail-closed behavior;
+6. checksum and storage-key generation;
+7. Excel/CSV parsing;
+8. workbook expansion/row/cell limits;
+9. formula cells are never executed;
+10. malformed rows stay unpublished;
+11. approval publishes only validated rows;
+12. revision history is immutable;
+13. correction creates new revision;
+14. percentage aggregation uses numerator/denominator;
+15. missing values remain `N/A`;
+16. audit events contain no secrets;
+17. object-storage failure does not publish data;
+18. current map/360/security regression suite remains green.
 
 ## 20. Rollout
 
@@ -531,7 +582,9 @@ Test groups:
 - permissions;
 - upload metadata;
 - object storage adapter;
+- quarantine/scanner abstraction;
 - manual structured entry;
+- narrative entry;
 - revision history.
 
 ### Phase B — Excel/CSV
@@ -545,6 +598,7 @@ Test groups:
 ### Phase C — Document evidence
 
 - Word/PDF/TXT attachments;
+- quarantine + malware scan;
 - secure download;
 - metadata/history.
 
@@ -571,7 +625,7 @@ All schema changes are additive. Existing manual metric APIs and current 360° r
 
 New upload UI and routes can be feature-gated. If the feature is disabled, existing dashboard behavior remains unchanged.
 
-Object storage can be disconnected without deleting metric history; file-based imports simply become unavailable until restored.
+Object storage/scanner can be disconnected without deleting metric history; file-based imports simply become unavailable until restored.
 
 ## 22. Acceptance Criteria
 
@@ -579,29 +633,34 @@ The phase is accepted when:
 
 1. authorized user can choose institution, period and module;
 2. user can enter manual structured values;
-3. user can upload Excel/CSV and preview parsed rows;
-4. invalid rows cannot reach production statistics;
-5. user can attach Word/PDF/TXT evidence;
-6. files survive web-service redeploys;
-7. uploads and approvals are auditable;
-8. corrections preserve previous revisions;
-9. approved values appear in Muassasa 360° with correct source badge;
-10. province/district percentages aggregate correctly where numerator/denominator are available;
-11. missing values remain `N/A`;
-12. users cannot access institutions outside their scope;
-13. executable/active-content uploads are blocked;
-14. existing security, enterprise-core and map tests remain green;
-15. production readiness and Railway health checks remain successful.
+3. user can enter a written/narrative report without it affecting numeric statistics;
+4. user can upload Excel/CSV and preview parsed rows;
+5. invalid rows cannot reach production statistics;
+6. user can attach Word/PDF/TXT evidence;
+7. uploaded files are quarantined and fail closed until clean scan;
+8. files survive web-service redeploys;
+9. uploads and approvals are auditable;
+10. corrections preserve previous revisions;
+11. approved values appear in Muassasa 360° with correct source badge;
+12. province/district percentages aggregate correctly where numerator/denominator are available;
+13. missing values remain `N/A`;
+14. users cannot access institutions outside their scope;
+15. executable/macro-enabled/active-content uploads are blocked;
+16. parser resource/decompression limits prevent oversized workbook/archive expansion;
+17. existing security, enterprise-core and map tests remain green;
+18. production readiness and Railway health checks remain successful.
 
 ## 23. Recommended First Release
 
 The first production release should include:
 
 - manual structured input;
+- free-form written/narrative reports;
 - `.xlsx/.xls/.csv` import;
 - `.docx/.doc/.pdf/.txt` evidence upload;
 - 30 MB file limit;
 - Railway object storage;
+- quarantine + malware scan before parsing/download;
 - draft/validate/approve workflow;
 - revision history;
 - provenance badges;
