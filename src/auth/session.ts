@@ -1,22 +1,59 @@
 import crypto from 'node:crypto';
 
-export type Session = { username: string; expiresAt: number };
+export type SessionRole = 'admin' | 'viewer';
+export type Session = {
+  username: string;
+  role: SessionRole;
+  csrfToken: string;
+  createdAt: number;
+  lastSeenAt: number;
+  expiresAt: number;
+};
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
-  constructor(private ttlMs = 8 * 60 * 60 * 1000) {}
-  create(data: { username: string }) {
+  private idleTtlMs: number;
+
+  constructor(private ttlMs = 8 * 60 * 60 * 1000, idleTtlMs = 30 * 60 * 1000) {
+    this.idleTtlMs = Math.min(idleTtlMs, ttlMs);
+  }
+
+  create(data: { username: string; role?: SessionRole }) {
     const token = crypto.randomBytes(32).toString('hex');
-    this.sessions.set(token, { username: data.username, expiresAt: Date.now() + this.ttlMs });
+    const now = Date.now();
+    this.sessions.set(token, {
+      username: data.username,
+      role: data.role ?? 'viewer',
+      csrfToken: crypto.randomBytes(32).toString('hex'),
+      createdAt: now,
+      lastSeenAt: now,
+      expiresAt: now + this.ttlMs
+    });
     return token;
   }
+
   get(token: string | undefined) {
     if (!token) return null;
     const session = this.sessions.get(token);
     if (!session) return null;
-    if (session.expiresAt <= Date.now()) { this.sessions.delete(token); return null; }
+    const now = Date.now();
+    if (session.expiresAt <= now || session.lastSeenAt + this.idleTtlMs <= now) {
+      this.sessions.delete(token);
+      return null;
+    }
+    session.lastSeenAt = now;
     return session;
   }
+
+  verifyCsrf(token: string | undefined, candidate: string | undefined) {
+    if (!token || !candidate) return false;
+    const session = this.get(token);
+    if (!session) return false;
+    const expected = Buffer.from(session.csrfToken);
+    const supplied = Buffer.from(candidate);
+    return expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied);
+  }
+
   destroy(token: string) { this.sessions.delete(token); }
 }
 
