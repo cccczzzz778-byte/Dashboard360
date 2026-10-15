@@ -9,7 +9,15 @@ export function institution360Html() {
         <button id="close360" class="icon-btn" type="button" aria-label="Yopish">×</button>
       </div>
     </div>
-    <div class="drawer-layout">
+
+    <div class="drawer-commandbar">
+      <div class="drawer-breadcrumb"><strong>Buxoro SSB</strong><span>›</span><span>Muassasa 360°</span><span>›</span><span id="institutionBreadcrumb">Nazorat</span></div>
+      <div id="institutionDataHealth" class="drawer-data-health"><i class="health-dot"></i><span>Ma’lumot holati tekshirilmoqda...</span></div>
+    </div>
+
+    <div id="institutionExecutiveStats" class="drawer-kpi-strip" aria-label="Muassasa asosiy holati"></div>
+
+    <div class="drawer-main">
       <nav id="moduleTabs" class="module-navigation" aria-label="Nazorat yo‘nalishlari"></nav>
       <section class="module-workspace">
         <div id="moduleSummary" class="module-summary"></div>
@@ -17,6 +25,7 @@ export function institution360Html() {
       </section>
     </div>
   </aside>
+
   <dialog id="metricEditor" class="metric-dialog">
     <form id="metricForm" method="dialog">
       <div class="dialog-head"><div><span class="eyebrow">Qo‘lda kiritish</span><h3 id="metricEditorTitle">Ko‘rsatkich</h3></div><button id="metricEditorClose" class="icon-btn" type="button">×</button></div>
