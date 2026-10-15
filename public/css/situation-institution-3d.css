@@ -1,0 +1,56 @@
+.situation-map-enhanced {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  background: #02111e;
+  transition: opacity .28s ease;
+}
+
+body.institution-3d-active .situation-map-enhanced {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.institution-3d-active #situationMap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.situation-map-enhanced .maplibregl-canvas {
+  filter: saturate(1.08) contrast(1.05) brightness(.88);
+}
+
+.situation-map-enhanced .maplibregl-ctrl-top-right {
+  top: 100px;
+  right: calc(var(--sc-hud-width) + 26px);
+}
+
+.situation-map-enhanced .maplibregl-ctrl-group {
+  border: 1px solid rgba(46,229,255,.32) !important;
+  background: rgba(2,25,44,.75) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.28) !important;
+  backdrop-filter: blur(8px);
+}
+
+@media (min-width: 1900px) {
+  .situation-map-enhanced .maplibregl-ctrl-top-right {
+    top: 112px;
+    right: calc(var(--sc-hud-width) + 32px);
+  }
+}
+
+@media (max-width: 1450px) and (min-width: 901px) {
+  .situation-map-enhanced .maplibregl-ctrl-top-right {
+    top: 88px;
+    right: calc(var(--sc-hud-width) + 18px);
+  }
+}
+
+@media (max-width: 900px) {
+  .situation-map-enhanced .maplibregl-ctrl-top-right {
+    top: 10px;
+    right: 10px;
+  }
+}
