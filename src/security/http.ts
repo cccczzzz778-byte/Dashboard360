@@ -2,7 +2,18 @@ import crypto from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 
 function dynamicResponse(path: string) {
-  return path === '/' || path === '/login' || path.startsWith('/api/');
+  return path === '/' || path === '/login' || path === '/situation-center' || path.startsWith('/api/');
+}
+
+function approvedSituationMapOrigins() {
+  const raw = String(process.env.SITUATION_MAP_STYLE_ALLOWED_HOSTS ?? '');
+  const origins: string[] = [];
+  for (const item of raw.split(',')) {
+    const host = item.trim().toLowerCase();
+    if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/.test(host)) continue;
+    origins.push(`https://${host}`);
+  }
+  return Array.from(new Set(origins));
 }
 
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
@@ -13,9 +24,11 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  const mapOrigins = approvedSituationMapOrigins();
+  const connectSrc = "connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org" + (mapOrigins.length ? ` ${mapOrigins.join(' ')}` : '');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self'; font-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    `default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; ${connectSrc}; worker-src 'self'; font-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`
   );
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

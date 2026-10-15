@@ -2,10 +2,11 @@ import express from 'express';
 import path from 'node:path';
 import { Pool } from 'pg';
 import { createClient } from 'redis';
-import { createInstitutionRepository, ensureSchema, listLatestMetrics, upsertManualMetric } from './db/index.js';
+import { createInstitutionRepository, ensureSchema, listLatestMetrics, listMetricTrend, upsertManualMetric } from './db/index.js';
 import { normalizeDistrictName } from './map/district-map.js';
 import { dashboardHtml } from './views/dashboard.js';
 import { loginHtml } from './views/login.js';
+import { situationCenterHtml } from './views/situation-center.js';
 import { SessionManager, hashPassword, verifyPassword } from './auth/session.js';
 import { SessionStore } from './auth/session-store.js';
 import { requireAuth, requireCsrf, readSessionToken, sessionCookieName } from './auth/middleware.js';
@@ -25,6 +26,8 @@ import { createRiskRepository } from './risk/repository.js';
 import { createAlertRepository } from './alerts/repository.js';
 import { createIntegrationRepository } from './integrations/repository.js';
 import { createEnterpriseRouter } from './enterprise/router.js';
+import { createSituationCenterService } from './situation-center/service.js';
+import { createSituationCenterRouter } from './situation-center/router.js';
 
 export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
@@ -32,6 +35,10 @@ export function resolvePublicDir(root = process.cwd()) {
 
 export function resolveLeafletDir(root = process.cwd()) {
   return path.join(root, 'node_modules', 'leaflet', 'dist');
+}
+
+export function resolveMapLibreDir(root = process.cwd()) {
+  return path.join(root, 'node_modules', 'maplibre-gl', 'dist');
 }
 
 export function createServer(options: {
@@ -48,6 +55,11 @@ export function createServer(options: {
   app.use(express.urlencoded({ extended: false, limit: '64kb' }));
   app.use(express.json({ limit: '64kb' }));
   app.use('/vendor/leaflet', express.static(resolveLeafletDir(), {
+    maxAge: process.env.NODE_ENV === 'production' ? '30d' : 0,
+    immutable: process.env.NODE_ENV === 'production',
+    fallthrough: false
+  }));
+  app.use('/vendor/maplibre', express.static(resolveMapLibreDir(), {
     maxAge: process.env.NODE_ENV === 'production' ? '30d' : 0,
     immutable: process.env.NODE_ENV === 'production',
     fallthrough: false
@@ -143,12 +155,43 @@ export function createServer(options: {
     async listHealth() { return []; }
   };
 
+  const situationCenterService = createSituationCenterService({
+    institutions: { listAll: allInstitutions, findById: findInstitution },
+    metrics: {
+      async listLatest(institutionId: string) {
+        if (!pool) return [];
+        try {
+          await dbReady;
+          return await listLatestMetrics(pool, institutionId);
+        } catch {
+          return [];
+        }
+      },
+      async listTrend(input) {
+        if (!pool) return [];
+        try {
+          await dbReady;
+          return await listMetricTrend(pool, input);
+        } catch {
+          return [];
+        }
+      }
+    },
+    risks: riskRepo,
+    alerts: alertRepo,
+    integrations: integrationRepo
+  });
+
   app.use('/api/v1', createEnterpriseRouter({
     sessionBackend: sessions,
     institutions: { listAll: allInstitutions, findById: findInstitution },
     risk: riskRepo,
     alerts: alertRepo,
     integrations: integrationRepo
+  }));
+  app.use('/api/v1/situation-center', createSituationCenterRouter({
+    sessionBackend: sessions,
+    service: situationCenterService
   }));
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'buxoro-ssb-360' }));
@@ -251,6 +294,7 @@ export function createServer(options: {
   });
 
   app.get('/', requireAuth(sessions), (_req, res) => res.send(dashboardHtml()));
+  app.get('/situation-center', requireAuth(sessions), requirePermission('institution.view'), (_req, res) => res.send(situationCenterHtml()));
 
   app.get('/api/bootstrap', requireAuth(sessions), requirePermission('institution.view'), async (req, res) => {
     const principal = requestPrincipal(req);
