@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { Pool } from 'pg';
 import { createClient } from 'redis';
-import { createInstitutionRepository, ensureSchema, listLatestMetrics, upsertManualMetric } from './db/index.js';
+import { createInstitutionRepository, ensureSchema, listLatestMetrics, listMetricTrend, upsertManualMetric } from './db/index.js';
 import { normalizeDistrictName } from './map/district-map.js';
 import { dashboardHtml } from './views/dashboard.js';
 import { loginHtml } from './views/login.js';
@@ -163,6 +163,15 @@ export function createServer(options: {
         try {
           await dbReady;
           return await listLatestMetrics(pool, institutionId);
+        } catch {
+          return [];
+        }
+      },
+      async listTrend(input) {
+        if (!pool) return [];
+        try {
+          await dbReady;
+          return await listMetricTrend(pool, input);
         } catch {
           return [];
         }
