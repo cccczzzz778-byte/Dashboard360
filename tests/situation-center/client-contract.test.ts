@@ -17,7 +17,8 @@ test('maplibre client is self-hosted, risk-null-safe and labels coordinate accur
   assert.match(js, /\/api\/v1\/situation-center\/bootstrap/);
   assert.match(js, /unavailable[^\n]{0,80}neutral|neutral[^\n]{0,80}unavailable/);
   assert.match(js, /locationAccuracy/);
-  assert.match(js, /tile\.openstreetmap\.org/);
+  assert.match(js, /https:\/\/tile\.openstreetmap\.org\/\{z\}\/\{x\}\/\{y\}\.png/);
+  assert.doesNotMatch(js, /\{a-c\}\.tile\.openstreetmap\.org/);
   assert.match(js, /pitch\s*:\s*(5[0-9]|60)/);
   assert.doesNotMatch(js, /unpkg|jsdelivr|cdnjs/i);
 });
@@ -25,7 +26,7 @@ test('maplibre client is self-hosted, risk-null-safe and labels coordinate accur
 test('CSP permits same-origin MapLibre worker and OSM tile fetches without third-party script/style CDN', () => {
   const source = readFileSync(securityUrl, 'utf8');
   assert.match(source, /worker-src\s+'self'/);
-  assert.match(source, /connect-src\s+'self'[^;]*https:\/\/\*\.tile\.openstreetmap\.org/);
+  assert.match(source, /connect-src\s+'self'[^;]*https:\/\/tile\.openstreetmap\.org/);
   assert.doesNotMatch(source, /script-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
   assert.doesNotMatch(source, /style-src[^;]*(?:unpkg|jsdelivr|cdnjs)/i);
 });
