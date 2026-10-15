@@ -2,8 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildUnavailableModules, moduleDefinitions } from '../../src/domain/modules.js';
 
-test('first release exposes exactly the ten approved monitoring modules', () => {
-  assert.deepEqual(moduleDefinitions.map(x => x.key), ['passport','staff','patients','admissions','diseases','inpatient','digital','equipment','appeals','kpi']);
+test('production release exposes the full Muassasa 360 monitoring surface', () => {
+  assert.ok(moduleDefinitions.length >= 25);
+  const keys = new Set(moduleDefinitions.map(x => x.key));
+  for (const key of [
+    'passport','staff','patients','admissions','diseases','inpatient','emergency','maternalChild','screening',
+    'laboratory','diagnostics','medicines','medicalEquipment','digital','dmed','finance','paidServices','procurement',
+    'infrastructure','transport','appeals','qr','execution','kpi','quality','infectionControl','mortality',
+    'telemedicine','meetings','alerts'
+  ]) assert.ok(keys.has(key as any), `missing module: ${key}`);
 });
 
 test('unavailable modules use null values and source metadata instead of zeroes', () => {
