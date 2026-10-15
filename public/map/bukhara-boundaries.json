@@ -1,0 +1,6 @@
+{
+  "source": "https://github.com/dirixtt/GeoJSON-Uzbekistan/blob/34e23452a63e31dcde2b72f50629cc58281aa3ed/regions_svg/BukharaMap.js",
+  "commit": "34e23452a63e31dcde2b72f50629cc58281aa3ed",
+  "note": "Published Buxoro region SVG boundary source pinned by commit. The runtime map labels are mapped to the source district/city keys; full path data may be upgraded without changing the district API.",
+  "districts": ["jondor","qorakol","peshku","olot","qorovulbozor","romitan","buxoro-tumani","kogon-tumani","vobkent","shofirkon","gijduvon","kogon-shahar","buxoro-shahar"]
+}
