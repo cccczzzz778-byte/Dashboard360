@@ -8,6 +8,7 @@ export function executiveTodayHtml() {
             <p>Risk, kritik signal va ma’lumot manbalari holati — faqat mavjud real ma’lumotlar asosida.</p>
           </div>
           <div class="executive-today-meta">
+            <a class="btn primary" href="/situation-center">3D Situatsion markaz</a>
             <span id="executiveTodayState" class="executive-state" role="status" aria-live="polite">Yuklanmoqda…</span>
             <button id="executiveTodayRefresh" class="btn secondary" type="button">Yangilash</button>
           </div>
