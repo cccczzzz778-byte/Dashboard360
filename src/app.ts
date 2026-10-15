@@ -16,6 +16,7 @@ import type { Institution, InstitutionMetric } from './domain/institution.js';
 import { securityHeaders, sameOriginGuard, requestFingerprint } from './security/http.js';
 import { LoginRateLimiter, type LoginLimiter } from './security/rate-limit.js';
 import { RedisLoginRateLimiter } from './security/redis-rate-limit.js';
+import { checkReadiness } from './health/readiness.js';
 
 export function resolvePublicDir(root = process.cwd()) {
   return path.join(root, 'public');
@@ -105,6 +106,24 @@ export function createServer(options: {
   }
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'buxoro-ssb-360' }));
+
+  app.get('/api/ready', async (_req, res) => {
+    const state = await checkReadiness({
+      database: async () => {
+        if (!pool) return false;
+        await pool.query('select 1');
+        return true;
+      },
+      redis: redisClient ? async () => {
+        if (!redisClient.isReady) return false;
+        return (await redisClient.ping()) === 'PONG';
+      } : undefined
+    }, 1000);
+    res.status(state.ok ? 200 : 503).json({
+      ok: state.ok,
+      dependencies: { database: state.database, redis: state.redis }
+    });
+  });
 
   app.get('/login', (_req, res) => res.send(loginHtml()));
   app.post('/login', async (req, res) => {
