@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const viewUrl = new URL('../../src/views/situation-center.ts', import.meta.url);
-const cssUrl = new URL('../../public/css/situation-center.css', import.meta.url);
-const clientUrl = new URL('../../public/js/situation-center.js', import.meta.url);
+const cssUrl = new URL('../../public/css/situation-reference.css', import.meta.url);
+const clientUrl = new URL('../../public/js/situation-reference.js', import.meta.url);
 
 test('reference layout exposes centered title, risk donut and today activity panels', () => {
   const view = readFileSync(viewUrl, 'utf8');
@@ -12,6 +12,8 @@ test('reference layout exposes centered title, risk donut and today activity pan
   assert.match(view, /id=\"situationRiskDistribution\"/);
   assert.match(view, /id=\"situationToday\"/);
   assert.match(view, /Bugungi qabul/);
+  assert.match(view, /\/css\/situation-reference\.css/);
+  assert.match(view, /\/js\/situation-reference\.js/);
 });
 
 test('reference layout renders risk distribution and today activity without fabricated values', () => {
