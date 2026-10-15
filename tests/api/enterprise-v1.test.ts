@@ -99,12 +99,15 @@ test('integration health requires integrations permission and executive can read
   assert.equal(allowed.body.items[0].status, 'stale');
 });
 
-test('executive today endpoint is explicit not_ready until a service is supplied', async () => {
+test('executive today endpoint uses the default deterministic aggregate when no override is supplied', async () => {
   if (!existsSync(routerUrl)) return assert.fail('src/enterprise/router.ts must exist');
   const app = await buildApp();
   const res = await request(app).get('/api/v1/executive/today').set('Cookie', 'ssb360=exec');
-  assert.equal(res.status, 503);
-  assert.deepEqual(res.body, { code: 'not_ready' });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.summary.institutions, 2);
+  assert.equal(res.body.riskDistribution.red, 1);
+  assert.equal(res.body.riskDistribution.green, 1);
+  assert.deepEqual(res.body.topAttention.map((x: any) => x.institutionId), ['inst-gij']);
 });
 
 test('executive today endpoint delegates to supplied scoped aggregate service', async () => {
