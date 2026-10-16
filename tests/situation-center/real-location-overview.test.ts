@@ -14,7 +14,8 @@ test('verified facilities use exact coordinates instead of the shared city centr
 
 test('schema upgrades old centroid coordinates when catalog location becomes exact', () => {
   assert.match(db, /excluded\.location_accuracy\s*=\s*'exact'/);
-  assert.match(db, /institutions\.location_accuracy[^\n]*in\s*\([^)]*'unknown'[^)]*'city-center'[^)]*'district-center'/);
+  assert.match(db, /institutions\.location_accuracy='unknown'/);
+  assert.match(db, /institutions\.location_accuracy\s+in\s*\(\s*'city-center'\s*,\s*'district-center'\s*\)/);
   assert.match(db, /latitude\s*=\s*case/i);
   assert.match(db, /longitude\s*=\s*case/i);
 });
