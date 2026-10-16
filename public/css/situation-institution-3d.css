@@ -34,6 +34,15 @@ body.institution-3d-active #situationMap {
   backdrop-filter: blur(8px);
 }
 
+.ssb-province-control button {
+  width: auto !important;
+  min-width: 58px;
+  padding: 0 9px !important;
+  color: #dffaff !important;
+  font: 700 11px/29px Arial, sans-serif !important;
+  letter-spacing: .02em;
+}
+
 .ssb-hospital-marker {
   --marker-tone: #35d8ff;
   position: relative;
@@ -50,6 +59,25 @@ body.institution-3d-active #situationMap {
 .ssb-hospital-marker[data-tone="red"] { --marker-tone: #ff5d72; }
 .ssb-hospital-marker[data-tone="amber"] { --marker-tone: #ffc857; }
 .ssb-hospital-marker[data-tone="green"] { --marker-tone: #2ce7b0; }
+
+.ssb-hospital-marker-visual {
+  position: absolute;
+  inset: 0;
+  transform: translate(var(--marker-offset-x, 0), var(--marker-offset-y, 0));
+  transition: transform .2s ease;
+}
+
+.ssb-hospital-marker[data-shared-anchor="true"] .ssb-hospital-marker-visual::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: rgba(16,51,72,.75);
+}
 
 .ssb-hospital-marker-ring {
   position: absolute;
@@ -119,26 +147,9 @@ body.institution-3d-active #situationMap {
   text-shadow: 0 0 4px var(--marker-tone), 0 1px 1px rgba(0,0,0,.4);
 }
 
-.ssb-hospital-count {
-  position: absolute;
-  z-index: 4;
-  top: -7px;
-  right: -7px;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
-  border: 1px solid rgba(255,255,255,.92);
-  border-radius: 9px;
-  background: #0b3146;
-  color: #fff;
-  box-shadow: 0 0 7px rgba(53,216,255,.45);
-  font: 700 10px/15px Arial, sans-serif;
-  text-align: center;
-}
-
 .ssb-hospital-marker[data-location-accuracy="city-center"] .ssb-hospital-building,
 .ssb-hospital-marker[data-location-accuracy="district-center"] .ssb-hospital-building {
-  opacity: .82;
+  opacity: .78;
 }
 
 .ssb-hospital-marker:hover .ssb-hospital-building,

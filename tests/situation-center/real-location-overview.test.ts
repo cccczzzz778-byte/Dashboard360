@@ -23,7 +23,7 @@ test('schema upgrades old centroid coordinates when catalog location becomes exa
 test('province overview keeps approximate centers honest and never turns them into invented map positions', () => {
   assert.match(map, /function\s+hasExactLocation\s*\(/);
   assert.match(map, /institutions\.filter\(hasExactLocation\)/);
-  assert.match(map, /function\s+markerGroups\s*\(/);
+  assert.match(map, /function\s+sharedAnchorGroups\s*\(/);
   assert.doesNotMatch(map, /APPROXIMATE_DISPLAY_RADIUS/);
   assert.doesNotMatch(map, /displayLongitude/);
   assert.doesNotMatch(map, /displayLatitude/);
