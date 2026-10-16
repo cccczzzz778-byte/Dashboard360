@@ -10,7 +10,8 @@ const BUILDING_HALF_HEIGHT = 0.00011;
 const state = {
   map: null,
   bootstrap: null,
-  institutions: []
+  institutions: [],
+  hospitalMarkers: []
 };
 
 const riskTone = severity => severity === 'red' ? 'red' : severity === 'amber' ? 'amber' : severity === 'green' ? 'green' : 'neutral';
@@ -90,6 +91,35 @@ function statusColorExpression() {
   ];
 }
 
+function addSafetyBasemap(map) {
+  if (map.getSource('ssb-safety-basemap')) return;
+  const style = map.getStyle();
+  const beforeId = (style.layers ?? []).find(layer => layer.type !== 'background')?.id;
+  try {
+    map.addSource('ssb-safety-basemap', {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    });
+    map.addLayer({
+      id: 'ssb-safety-basemap',
+      type: 'raster',
+      source: 'ssb-safety-basemap',
+      paint: {
+        'raster-opacity': 0.86,
+        'raster-saturation': -0.28,
+        'raster-contrast': 0.05,
+        'raster-brightness-min': 0.08,
+        'raster-brightness-max': 0.92
+      }
+    }, beforeId);
+  } catch (error) {
+    console.warn('Safety basemap unavailable', error);
+  }
+}
+
 function addNativeBuildingExtrusion(map) {
   if (map.getLayer('ssb-native-buildings-3d')) return;
   const style = map.getStyle();
@@ -115,6 +145,53 @@ function addNativeBuildingExtrusion(map) {
   } catch (error) {
     console.warn('Native Bukhara building extrusion unavailable', error);
   }
+}
+
+function createHospitalMarkerElement(item) {
+  const element = document.createElement('button');
+  element.type = 'button';
+  element.className = 'ssb-hospital-marker';
+  element.dataset.tone = riskTone(item.risk?.severity);
+  element.dataset.institutionId = String(item.id);
+  element.title = item.officialName ?? 'Tibbiyot muassasasi';
+  element.setAttribute('aria-label', `${item.officialName ?? 'Tibbiyot muassasasi'} 3D marker`);
+
+  const ring = document.createElement('span');
+  ring.className = 'ssb-hospital-marker-ring';
+  const building = document.createElement('span');
+  building.className = 'ssb-hospital-building';
+  const cross = document.createElement('span');
+  cross.className = 'ssb-hospital-cross';
+  cross.textContent = '+';
+  building.appendChild(cross);
+  element.append(ring, building);
+  element.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    focusInstitution(String(item.id));
+  });
+  return element;
+}
+
+function updateHospitalMarkerDetail() {
+  const close = (state.map?.getZoom() ?? 0) >= 12.5;
+  for (const entry of state.hospitalMarkers) entry.element.classList.toggle('is-close', close);
+}
+
+function syncHospitalMarkers(institutions) {
+  for (const entry of state.hospitalMarkers) entry.marker.remove();
+  state.hospitalMarkers = [];
+  if (!state.map) return;
+
+  for (const item of institutions) {
+    if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
+    const element = createHospitalMarkerElement(item);
+    const marker = new maplibregl.Marker({ element, anchor: 'bottom' })
+      .setLngLat([item.longitude, item.latitude])
+      .addTo(state.map);
+    state.hospitalMarkers.push({ marker, element });
+  }
+  updateHospitalMarkerDetail();
 }
 
 function addInstitution3dLayers(map, institutions) {
@@ -204,6 +281,7 @@ function updateEnhancedData(institutions) {
   const buildingSource = state.map?.getSource('institution-buildings');
   if (pointSource) pointSource.setData(pointCollection(institutions));
   if (buildingSource) buildingSource.setData(institutionBuildingCollection(institutions));
+  syncHospitalMarkers(institutions);
 }
 
 function boundsFor(institutions) {
@@ -304,9 +382,12 @@ function initEnhancedMap(bootstrap) {
   state.map = map;
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
   map.on('load', () => {
+    addSafetyBasemap(map);
     addNativeBuildingExtrusion(map);
     addInstitution3dLayers(map, bootstrap.institutions ?? []);
+    syncHospitalMarkers(bootstrap.institutions ?? []);
     wireLayerInteraction(map);
+    map.on('zoom', updateHospitalMarkerDetail);
     fitInstitutions(bootstrap.institutions ?? [], 0);
     document.body.classList.add('institution-3d-active');
   });
@@ -335,7 +416,8 @@ window.SSB360Institution3D = {
   institutionVisualHeight,
   updateEnhancedData,
   fitInstitutions,
-  focusInstitution
+  focusInstitution,
+  syncHospitalMarkers
 };
 
 void boot();
