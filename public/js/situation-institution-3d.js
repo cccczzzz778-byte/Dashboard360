@@ -2,11 +2,10 @@ import * as maplibregl from '/vendor/maplibre/maplibre-gl.mjs';
 
 maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 
-const BUKHARA_REGION_CAMERA = { center: [64.34, 39.82], zoom: 8.35, pitch: 55, bearing: -12 };
+const BUKHARA_REGION_CAMERA = { center: [64.34, 39.82], zoom: 8.35, pitch: 52, bearing: -12 };
 const FALLBACK_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
-const BUILDING_HALF_WIDTH = 0.0042;
-const BUILDING_HALF_HEIGHT = 0.0030;
-const VISUAL_HEIGHT_METERS = 900;
+const BUILDING_HALF_WIDTH = 0.00018;
+const BUILDING_HALF_HEIGHT = 0.00011;
 
 const state = {
   map: null,
@@ -15,6 +14,13 @@ const state = {
 };
 
 const riskTone = severity => severity === 'red' ? 'red' : severity === 'amber' ? 'amber' : severity === 'green' ? 'green' : 'neutral';
+
+function institutionVisualHeight(severity, type = '') {
+  const base = severity === 'red' ? 30 : severity === 'amber' ? 24 : severity === 'green' ? 18 : 21;
+  const normalizedType = String(type).toLowerCase();
+  const isLargeHospital = /markaz|shifoxona|hospital|kompleks|ko‘p tarmoqli|ko'p tarmoqli/.test(normalizedType);
+  return isLargeHospital ? Math.min(32, base + 2) : base;
+}
 
 function pointCollection(institutions) {
   return {
@@ -68,7 +74,7 @@ function institutionBuildingCollection(institutions) {
           severity,
           locationAccuracy: item.locationAccuracy ?? 'unknown',
           visualizationFootprint: true,
-          visualizationHeight: VISUAL_HEIGHT_METERS
+          visualizationHeight: institutionVisualHeight(severity, item.type)
         }
       }];
     })
@@ -84,6 +90,33 @@ function statusColorExpression() {
   ];
 }
 
+function addNativeBuildingExtrusion(map) {
+  if (map.getLayer('ssb-native-buildings-3d')) return;
+  const style = map.getStyle();
+  const vectorSource = Object.entries(style.sources ?? {}).find(([, source]) => source?.type === 'vector');
+  if (!vectorSource) return;
+  const [sourceId] = vectorSource;
+  const firstSymbol = (style.layers ?? []).find(layer => layer.type === 'symbol')?.id;
+  try {
+    map.addLayer({
+      id: 'ssb-native-buildings-3d',
+      type: 'fill-extrusion',
+      source: sourceId,
+      'source-layer': 'building',
+      minzoom: 13.2,
+      paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['zoom'], 13.2, '#b7c9d3', 16, '#d8edf4'],
+        'fill-extrusion-height': ['coalesce', ['to-number', ['get', 'render_height']], ['to-number', ['get', 'height']], 8],
+        'fill-extrusion-base': ['coalesce', ['to-number', ['get', 'render_min_height']], ['to-number', ['get', 'min_height']], 0],
+        'fill-extrusion-opacity': 0.76,
+        'fill-extrusion-vertical-gradient': true
+      }
+    }, firstSymbol);
+  } catch (error) {
+    console.warn('Native Bukhara building extrusion unavailable', error);
+  }
+}
+
 function addInstitution3dLayers(map, institutions) {
   map.addSource('institutions-enhanced', { type: 'geojson', data: pointCollection(institutions) });
   map.addSource('institution-buildings', { type: 'geojson', data: institutionBuildingCollection(institutions) });
@@ -92,17 +125,17 @@ function addInstitution3dLayers(map, institutions) {
     id: 'institution-buildings-3d',
     type: 'fill-extrusion',
     source: 'institution-buildings',
-    minzoom: 7.2,
+    minzoom: 11.5,
     paint: {
       'fill-extrusion-color': ['match', ['get', 'riskTone'],
-        'red', '#5f1d2a',
-        'amber', '#67501d',
-        'green', '#155a4d',
-        '#17617b'
+        'red', '#d83d55',
+        'amber', '#d99b24',
+        'green', '#159b77',
+        '#1686a6'
       ],
       'fill-extrusion-height': ['get', 'visualizationHeight'],
       'fill-extrusion-base': 0,
-      'fill-extrusion-opacity': 0.92,
+      'fill-extrusion-opacity': 0.94,
       'fill-extrusion-vertical-gradient': true
     }
   });
@@ -112,10 +145,10 @@ function addInstitution3dLayers(map, institutions) {
     type: 'circle',
     source: 'institutions-enhanced',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 13, 10, 19, 14, 30],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 8, 10, 11, 14, 17],
       'circle-color': statusColorExpression(),
-      'circle-opacity': 0.20,
-      'circle-blur': 0.75
+      'circle-opacity': 0.16,
+      'circle-blur': 0.72
     }
   });
 
@@ -124,10 +157,10 @@ function addInstitution3dLayers(map, institutions) {
     type: 'circle',
     source: 'institutions-enhanced',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 8, 10, 12, 14, 19],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 5.5, 10, 8, 14, 12],
       'circle-color': 'rgba(0,0,0,0)',
       'circle-stroke-color': statusColorExpression(),
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 7, 2, 14, 4],
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 7, 1.8, 14, 3.2],
       'circle-stroke-opacity': 0.98
     }
   });
@@ -137,10 +170,10 @@ function addInstitution3dLayers(map, institutions) {
     type: 'circle',
     source: 'institutions-enhanced',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 3.5, 14, 6],
-      'circle-color': '#eaffff',
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2.6, 14, 4.8],
+      'circle-color': '#f4ffff',
       'circle-stroke-color': statusColorExpression(),
-      'circle-stroke-width': 2
+      'circle-stroke-width': 1.8
     }
   });
 
@@ -148,19 +181,19 @@ function addInstitution3dLayers(map, institutions) {
     id: 'institution-enhanced-label',
     type: 'symbol',
     source: 'institutions-enhanced',
-    minzoom: 9.6,
+    minzoom: 11.3,
     layout: {
       'text-field': ['get', 'officialName'],
-      'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 14, 12],
-      'text-offset': [0, 1.7],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 11.3, 10, 15, 12],
+      'text-offset': [0, 1.35],
       'text-anchor': 'top',
       'text-max-width': 18,
       'text-allow-overlap': false
     },
     paint: {
-      'text-color': '#eaffff',
-      'text-halo-color': 'rgba(0,15,28,.92)',
-      'text-halo-width': 1.5
+      'text-color': '#f2ffff',
+      'text-halo-color': 'rgba(0,15,28,.94)',
+      'text-halo-width': 1.6
     }
   });
 }
@@ -186,8 +219,8 @@ function fitInstitutions(institutions, duration = 0) {
   if (!bounds || !state.map) return;
   state.map.fitBounds(bounds, {
     padding: { top: 115, bottom: 70, left: 340, right: 340 },
-    maxZoom: 10.6,
-    pitch: 55,
+    maxZoom: 10.8,
+    pitch: 52,
     bearing: -12,
     duration
   });
@@ -196,7 +229,7 @@ function fitInstitutions(institutions, duration = 0) {
 function focusInstitution(id) {
   const item = state.bootstrap?.institutions?.find(row => row.id === id) ?? state.institutions.find(row => row.id === id);
   if (!item || !state.map || !Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) return;
-  state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 13.2), pitch: 64, bearing: -20, duration: 850 });
+  state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 15.2), pitch: 63, bearing: -20, duration: 850 });
   window.SSB360Situation?.focusInstitution?.(id);
 }
 
@@ -271,6 +304,7 @@ function initEnhancedMap(bootstrap) {
   state.map = map;
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
   map.on('load', () => {
+    addNativeBuildingExtrusion(map);
     addInstitution3dLayers(map, bootstrap.institutions ?? []);
     wireLayerInteraction(map);
     fitInstitutions(bootstrap.institutions ?? [], 0);
@@ -298,6 +332,7 @@ async function boot() {
 
 window.SSB360Institution3D = {
   institutionBuildingCollection,
+  institutionVisualHeight,
   updateEnhancedData,
   fitInstitutions,
   focusInstitution
