@@ -35,11 +35,19 @@ const districtInstitution = (id: string, officialName: string, type: string, dis
 };
 
 export const institutionCatalog: Institution[] = [
-  districtInstitution('shtb-buxoro', 'Buxoro shahar tibbiyot birlashmasi', 'SHTB', 'buxoro-shahar'),
+  {
+    id: 'shtb-buxoro', officialName: 'Buxoro shahar tibbiyot birlashmasi', type: 'SHTB', districtKey: 'buxoro-shahar',
+    address: null, leaderName: null, phone: null,
+    latitude: 39.7448, longitude: 64.44251, locationAccuracy: 'exact'
+  },
   districtInstitution('ttb-buxoro', 'Buxoro tuman tibbiyot birlashmasi', 'TTB', 'buxoro-tumani'),
   districtInstitution('ttb-gijduvon', 'G‘ijduvon tuman tibbiyot birlashmasi', 'TTB', 'gijduvon'),
   districtInstitution('ttb-jondor', 'Jondor tuman tibbiyot birlashmasi', 'TTB', 'jondor'),
-  districtInstitution('shtb-kogon', 'Kogon shahar tibbiyot birlashmasi', 'SHTB', 'kogon-shahar'),
+  {
+    id: 'shtb-kogon', officialName: 'Kogon shahar tibbiyot birlashmasi', type: 'SHTB', districtKey: 'kogon-shahar',
+    address: 'Kogon, 1', leaderName: null, phone: null,
+    latitude: 39.728586, longitude: 64.545346, locationAccuracy: 'exact'
+  },
   districtInstitution('ttb-kogon', 'Kogon tuman tibbiyot birlashmasi', 'TTB', 'kogon-tumani'),
   districtInstitution('ttb-olot', 'Olot tuman tibbiyot birlashmasi', 'TTB', 'olot'),
   districtInstitution('ttb-peshku', 'Peshku tuman tibbiyot birlashmasi', 'TTB', 'peshku'),

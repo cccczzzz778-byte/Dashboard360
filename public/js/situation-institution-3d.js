@@ -2,7 +2,7 @@ import * as maplibregl from '/vendor/maplibre/maplibre-gl.mjs';
 
 maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 
-const BUKHARA_REGION_CAMERA = { center: [64.34, 39.82], zoom: 8.35, pitch: 52, bearing: -12 };
+const BUKHARA_REGION_CAMERA = { center: [64.34, 39.82], zoom: 8.35, pitch: 24, bearing: -8 };
 const FALLBACK_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const BUILDING_HALF_WIDTH = 0.00018;
 const BUILDING_HALF_HEIGHT = 0.00011;
@@ -15,6 +15,14 @@ const state = {
 };
 
 const riskTone = severity => severity === 'red' ? 'red' : severity === 'amber' ? 'amber' : severity === 'green' ? 'green' : 'neutral';
+
+function hasExactLocation(item) {
+  return Boolean(
+    item?.locationAccuracy === 'exact' &&
+    Number.isFinite(item?.longitude) &&
+    Number.isFinite(item?.latitude)
+  );
+}
 
 function institutionVisualHeight(severity, type = '') {
   const base = severity === 'red' ? 30 : severity === 'amber' ? 24 : severity === 'green' ? 18 : 21;
@@ -57,8 +65,7 @@ function visualizationFootprint(longitude, latitude) {
 function institutionBuildingCollection(institutions) {
   return {
     type: 'FeatureCollection',
-    features: institutions.flatMap(item => {
-      if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) return [];
+    features: institutions.filter(hasExactLocation).flatMap(item => {
       const severity = item.risk?.severity ?? 'unavailable';
       return [{
         type: 'Feature',
@@ -73,7 +80,7 @@ function institutionBuildingCollection(institutions) {
           type: item.type,
           riskTone: riskTone(severity),
           severity,
-          locationAccuracy: item.locationAccuracy ?? 'unknown',
+          locationAccuracy: item.locationAccuracy,
           visualizationFootprint: true,
           visualizationHeight: institutionVisualHeight(severity, item.type)
         }
@@ -108,11 +115,11 @@ function addSafetyBasemap(map) {
       type: 'raster',
       source: 'ssb-safety-basemap',
       paint: {
-        'raster-opacity': 0.86,
-        'raster-saturation': -0.28,
-        'raster-contrast': 0.05,
+        'raster-opacity': 0.90,
+        'raster-saturation': -0.18,
+        'raster-contrast': 0.03,
         'raster-brightness-min': 0.08,
-        'raster-brightness-max': 0.92
+        'raster-brightness-max': 0.95
       }
     }, beforeId);
   } catch (error) {
@@ -183,8 +190,7 @@ function syncHospitalMarkers(institutions) {
   state.hospitalMarkers = [];
   if (!state.map) return;
 
-  for (const item of institutions) {
-    if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
+  for (const item of institutions.filter(hasExactLocation)) {
     const element = createHospitalMarkerElement(item);
     const marker = new maplibregl.Marker({ element, anchor: 'bottom' })
       .setLngLat([item.longitude, item.latitude])
@@ -222,9 +228,9 @@ function addInstitution3dLayers(map, institutions) {
     type: 'circle',
     source: 'institutions-enhanced',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 8, 10, 11, 14, 17],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 7, 10, 10, 14, 16],
       'circle-color': statusColorExpression(),
-      'circle-opacity': 0.16,
+      'circle-opacity': 0.13,
       'circle-blur': 0.72
     }
   });
@@ -234,11 +240,11 @@ function addInstitution3dLayers(map, institutions) {
     type: 'circle',
     source: 'institutions-enhanced',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 5.5, 10, 8, 14, 12],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 5, 10, 7.5, 14, 12],
       'circle-color': 'rgba(0,0,0,0)',
       'circle-stroke-color': statusColorExpression(),
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 7, 1.8, 14, 3.2],
-      'circle-stroke-opacity': 0.98
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 14, 3],
+      'circle-stroke-opacity': 0.95
     }
   });
 
@@ -247,10 +253,10 @@ function addInstitution3dLayers(map, institutions) {
     type: 'circle',
     source: 'institutions-enhanced',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2.6, 14, 4.8],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2.3, 14, 4.6],
       'circle-color': '#f4ffff',
       'circle-stroke-color': statusColorExpression(),
-      'circle-stroke-width': 1.8
+      'circle-stroke-width': 1.6
     }
   });
 
@@ -296,10 +302,10 @@ function fitInstitutions(institutions, duration = 0) {
   const bounds = boundsFor(institutions);
   if (!bounds || !state.map) return;
   state.map.fitBounds(bounds, {
-    padding: { top: 115, bottom: 70, left: 340, right: 340 },
-    maxZoom: 10.8,
-    pitch: 52,
-    bearing: -12,
+    padding: { top: 85, bottom: 55, left: 55, right: 55 },
+    maxZoom: 9.6,
+    pitch: 24,
+    bearing: -8,
     duration
   });
 }
@@ -307,7 +313,11 @@ function fitInstitutions(institutions, duration = 0) {
 function focusInstitution(id) {
   const item = state.bootstrap?.institutions?.find(row => row.id === id) ?? state.institutions.find(row => row.id === id);
   if (!item || !state.map || !Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) return;
-  state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 15.2), pitch: 63, bearing: -20, duration: 850 });
+  if (hasExactLocation(item)) {
+    state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 15.2), pitch: 63, bearing: -20, duration: 850 });
+  } else {
+    state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 10.6), pitch: 24, bearing: -8, duration: 700 });
+  }
   window.SSB360Situation?.focusInstitution?.(id);
 }
 
@@ -414,6 +424,7 @@ async function boot() {
 window.SSB360Institution3D = {
   institutionBuildingCollection,
   institutionVisualHeight,
+  hasExactLocation,
   updateEnhancedData,
   fitInstitutions,
   focusInstitution,

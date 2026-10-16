@@ -74,8 +74,27 @@ export async function ensureSchema(pool: Pool, institutions: Institution[]) {
       `insert into institutions(id, official_name, type, district_key, address, leader_name, phone, latitude, longitude, location_accuracy)
        values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        on conflict(id) do update set official_name=excluded.official_name, type=excluded.type, district_key=excluded.district_key,
-         latitude=coalesce(institutions.latitude, excluded.latitude), longitude=coalesce(institutions.longitude, excluded.longitude),
-         location_accuracy=case when institutions.location_accuracy is null or institutions.location_accuracy='unknown' then excluded.location_accuracy else institutions.location_accuracy end`,
+         address=case
+           when excluded.location_accuracy = 'exact' and (institutions.location_accuracy is null or institutions.location_accuracy='unknown' or institutions.location_accuracy in ('city-center','district-center'))
+             then coalesce(excluded.address, institutions.address)
+           else institutions.address
+         end,
+         latitude=case
+           when excluded.location_accuracy = 'exact' and (institutions.location_accuracy is null or institutions.location_accuracy='unknown' or institutions.location_accuracy in ('city-center','district-center'))
+             then excluded.latitude
+           else coalesce(institutions.latitude, excluded.latitude)
+         end,
+         longitude=case
+           when excluded.location_accuracy = 'exact' and (institutions.location_accuracy is null or institutions.location_accuracy='unknown' or institutions.location_accuracy in ('city-center','district-center'))
+             then excluded.longitude
+           else coalesce(institutions.longitude, excluded.longitude)
+         end,
+         location_accuracy=case
+           when excluded.location_accuracy = 'exact' and (institutions.location_accuracy is null or institutions.location_accuracy='unknown' or institutions.location_accuracy in ('city-center','district-center'))
+             then 'exact'
+           when institutions.location_accuracy is null or institutions.location_accuracy='unknown' then excluded.location_accuracy
+           else institutions.location_accuracy
+         end`,
       [institution.id, institution.officialName, institution.type, institution.districtKey, institution.address, institution.leaderName,
        institution.phone, institution.latitude, institution.longitude, institution.locationAccuracy ?? 'unknown']
     );
