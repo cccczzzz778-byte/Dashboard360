@@ -39,7 +39,7 @@ const locatedInstitution = (
   officialName: string,
   type: string,
   districtKey: string,
-  address: string,
+  address: string | null,
   latitude: number,
   longitude: number
 ): Institution => ({
@@ -50,9 +50,9 @@ const locatedInstitution = (
 
 export const institutionCatalog: Institution[] = [
   locatedInstitution('shtb-buxoro', 'Buxoro shahar tibbiyot birlashmasi', 'SHTB', 'buxoro-shahar', 'Buxoro shahri, Alpomish ko‘chasi 5B', 39.7448, 64.44251),
-  districtInstitution('ttb-buxoro', 'Buxoro tuman tibbiyot birlashmasi', 'TTB', 'buxoro-tumani'),
-  districtInstitution('ttb-gijduvon', 'G‘ijduvon tuman tibbiyot birlashmasi', 'TTB', 'gijduvon'),
-  districtInstitution('ttb-jondor', 'Jondor tuman tibbiyot birlashmasi', 'TTB', 'jondor'),
+  locatedInstitution('ttb-buxoro', 'Buxoro tuman tibbiyot birlashmasi', 'TTB', 'buxoro-tumani', null, 39.86029, 64.45487),
+  locatedInstitution('ttb-gijduvon', 'G‘ijduvon tuman tibbiyot birlashmasi', 'TTB', 'gijduvon', null, 40.11057, 64.68125),
+  locatedInstitution('ttb-jondor', 'Jondor tuman tibbiyot birlashmasi', 'TTB', 'jondor', null, 39.7375, 64.17572),
   locatedInstitution('shtb-kogon', 'Kogon shahar tibbiyot birlashmasi', 'SHTB', 'kogon-shahar', 'Kogon shahri', 39.728586, 64.545346),
   districtInstitution('ttb-kogon', 'Kogon tuman tibbiyot birlashmasi', 'TTB', 'kogon-tumani'),
   districtInstitution('ttb-olot', 'Olot tuman tibbiyot birlashmasi', 'TTB', 'olot'),
@@ -61,14 +61,14 @@ export const institutionCatalog: Institution[] = [
   districtInstitution('ttb-qorovulbozor', 'Qorovulbozor tuman tibbiyot birlashmasi', 'TTB', 'qorovulbozor'),
   districtInstitution('ttb-romitan', 'Romitan tuman tibbiyot birlashmasi', 'TTB', 'romitan'),
   districtInstitution('ttb-shofirkon', 'Shofirkon tuman tibbiyot birlashmasi', 'TTB', 'shofirkon'),
-  districtInstitution('ttb-vobkent', 'Vobkent tuman tibbiyot birlashmasi', 'TTB', 'vobkent'),
+  locatedInstitution('ttb-vobkent', 'Vobkent tuman tibbiyot birlashmasi', 'TTB', 'vobkent', null, 40.02497, 64.52473),
   locatedInstitution('vkttm', 'Buxoro viloyat ko‘p tarmoqli tibbiyot markazi', 'Viloyat markazi', 'buxoro-shahar', 'Buxoro shahri, Muhammad Iqbol ko‘chasi 65', 39.7631625, 64.426265625),
   locatedInstitution('vbkttm', 'Buxoro viloyat bolalar ko‘p tarmoqli tibbiyot markazi', 'Viloyat markazi', 'buxoro-shahar', 'Buxoro shahri, Islom Karimov ko‘chasi 35', 39.7795625, 64.429890625),
   locatedInstitution('rsh-tiy-buxoro', 'Respublika shoshilinch tibbiy yordam ilmiy markazi Buxoro filiali', 'Respublika filiali', 'buxoro-shahar', 'Buxoro shahri, Bahouddin Naqshband ko‘chasi 159', 39.7695625, 64.453859375),
   locatedInstitution('onkologiya-buxoro', 'Respublika ixtisoslashtirilgan onkologiya va radiologiya markazi Buxoro filiali', 'Respublika filiali', 'buxoro-shahar', 'Buxoro shahri, G‘ijduvon ko‘chasi 71', 39.80926, 64.42474),
   districtInstitution('tugruq-buxoro', 'Buxoro shahar tug‘ruq kompleksi', 'Tug‘ruq kompleksi', 'buxoro-shahar'),
   districtInstitution('diagnostika-buxoro', 'Buxoro tibbiy diagnostika markazi', 'Diagnostika markazi', 'buxoro-shahar'),
-  districtInstitution('oits-buxoro', 'Buxoro viloyati OITSga qarshi kurash markazi', 'Viloyat markazi', 'buxoro-shahar'),
+  locatedInstitution('oits-buxoro', 'Buxoro viloyati OITSga qarshi kurash markazi', 'Viloyat markazi', 'buxoro-shahar', 'Buxoro shahri, Shayxon MFY', 39.81081, 64.42658),
   locatedInstitution('qon-buxoro', 'Buxoro viloyati qon quyish markazi', 'Viloyat markazi', 'buxoro-shahar', 'Buxoro shahri, Cho‘lpon ko‘chasi 12', 39.7850875, 64.426734375),
   districtInstitution('ona-bola-buxoro', 'Ona va bola salomatligi markazi Buxoro filiali', 'Respublika filiali', 'buxoro-shahar'),
   locatedInstitution('ruhiy-buxoro', 'Buxoro viloyati ruhiy salomatlik markazi', 'Viloyat markazi', 'buxoro-shahar', 'Buxoro shahri, Gazli shossesi 1', 39.793411, 64.443602)
