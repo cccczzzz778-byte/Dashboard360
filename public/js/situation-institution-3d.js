@@ -146,7 +146,7 @@ function addNativeBuildingExtrusion(map) {
   }
 }
 
-function markerGroups(institutions) {
+function sharedAnchorGroups(institutions) {
   const groups = new Map();
   for (const item of validInstitutions(institutions)) {
     const key = `${Number(item.longitude).toFixed(6)}:${Number(item.latitude).toFixed(6)}`;
@@ -157,32 +157,36 @@ function markerGroups(institutions) {
   return [...groups.values()];
 }
 
-function strongestTone(items) {
-  const tones = items.map(item => riskTone(item.risk?.severity));
-  if (tones.includes('red')) return 'red';
-  if (tones.includes('amber')) return 'amber';
-  if (tones.includes('green')) return 'green';
-  return 'neutral';
+function visualOffsetForSharedAnchor(index, count) {
+  if (count <= 1) return { x: 0, y: 0 };
+  const columns = Math.min(3, count);
+  const rows = Math.ceil(count / columns);
+  const column = index % columns;
+  const row = Math.floor(index / columns);
+  return {
+    x: Math.round((column - (columns - 1) / 2) * 34),
+    y: Math.round((row - (rows - 1) / 2) * 30)
+  };
 }
 
-function createHospitalMarkerElement(items) {
-  const primary = items[0];
+function createHospitalMarkerElement(item, sharedIndex = 0, sharedCount = 1) {
   const element = document.createElement('button');
   element.type = 'button';
   element.className = 'ssb-hospital-marker';
-  element.dataset.tone = strongestTone(items);
-  element.dataset.institutionId = String(primary.id);
-  element.dataset.locationAccuracy = primary.locationAccuracy ?? 'unknown';
-  element.dataset.groupSize = String(items.length);
-  element.title = items.length === 1
-    ? (primary.locationAccuracy === 'exact'
-      ? (primary.officialName ?? 'Tibbiyot muassasasi')
-      : `${primary.officialName ?? 'Tibbiyot muassasasi'} · taxminiy hudud`)
-    : `${items.length} ta muassasa · bir xil tasdiqlanmagan markaz koordinatasi`;
-  element.setAttribute('aria-label', items.length === 1
-    ? `${primary.officialName ?? 'Tibbiyot muassasasi'} 3D marker`
-    : `${items.length} ta muassasa bir hududda`);
+  element.dataset.tone = riskTone(item.risk?.severity);
+  element.dataset.institutionId = String(item.id);
+  element.dataset.locationAccuracy = item.locationAccuracy ?? 'unknown';
+  element.dataset.sharedAnchor = sharedCount > 1 ? 'true' : 'false';
+  const offset = visualOffsetForSharedAnchor(sharedIndex, sharedCount);
+  element.style.setProperty('--marker-offset-x', `${offset.x}px`);
+  element.style.setProperty('--marker-offset-y', `${offset.y}px`);
+  element.title = item.locationAccuracy === 'exact'
+    ? (item.officialName ?? 'Tibbiyot muassasasi')
+    : `${item.officialName ?? 'Tibbiyot muassasasi'} · taxminiy markaz`;
+  element.setAttribute('aria-label', `${item.officialName ?? 'Tibbiyot muassasasi'} 3D marker`);
 
+  const visual = document.createElement('span');
+  visual.className = 'ssb-hospital-marker-visual';
   const ring = document.createElement('span');
   ring.className = 'ssb-hospital-marker-ring';
   const building = document.createElement('span');
@@ -191,29 +195,13 @@ function createHospitalMarkerElement(items) {
   cross.className = 'ssb-hospital-cross';
   cross.textContent = '+';
   building.appendChild(cross);
-  element.append(ring, building);
-
-  if (items.length > 1) {
-    const badge = document.createElement('span');
-    badge.className = 'ssb-hospital-count';
-    badge.textContent = String(items.length);
-    element.appendChild(badge);
-  }
+  visual.append(ring, building);
+  element.appendChild(visual);
 
   element.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
-    if (items.length === 1) {
-      focusInstitution(String(primary.id));
-      return;
-    }
-    state.map?.easeTo({
-      center: [primary.longitude, primary.latitude],
-      zoom: Math.max(state.map?.getZoom() ?? 0, 11.4),
-      pitch: 22,
-      bearing: 0,
-      duration: 650
-    });
+    focusInstitution(String(item.id));
   });
   return element;
 }
@@ -228,13 +216,14 @@ function syncHospitalMarkers(institutions) {
   state.hospitalMarkers = [];
   if (!state.map) return;
 
-  for (const items of markerGroups(institutions)) {
-    const primary = items[0];
-    const element = createHospitalMarkerElement(items);
-    const marker = new maplibregl.Marker({ element, anchor: 'bottom' })
-      .setLngLat([primary.longitude, primary.latitude])
-      .addTo(state.map);
-    state.hospitalMarkers.push({ marker, element });
+  for (const items of sharedAnchorGroups(institutions)) {
+    items.forEach((item, index) => {
+      const element = createHospitalMarkerElement(item, index, items.length);
+      const marker = new maplibregl.Marker({ element, anchor: 'bottom' })
+        .setLngLat([item.longitude, item.latitude])
+        .addTo(state.map);
+      state.hospitalMarkers.push({ marker, element });
+    });
   }
   updateHospitalMarkerDetail();
 }
@@ -301,15 +290,29 @@ function boundsFor(institutions) {
   return bounds;
 }
 
+function provincePadding() {
+  return window.innerWidth <= 900
+    ? { top: 72, bottom: 52, left: 34, right: 34 }
+    : { top: 105, bottom: 72, left: 150, right: 150 };
+}
+
+function resetProvinceView(duration = 0) {
+  if (!state.map) return;
+  state.map.fitBounds(BUKHARA_REGION_BOUNDS, {
+    padding: provincePadding(),
+    maxZoom: 8.8,
+    pitch: 20,
+    bearing: 0,
+    duration
+  });
+}
+
 function fitInstitutions(institutions, duration = 0) {
   const bounds = boundsFor(institutions);
   if (!bounds || !state.map) return;
-  const compact = window.innerWidth <= 900;
   state.map.fitBounds(bounds, {
-    padding: compact
-      ? { top: 72, bottom: 52, left: 34, right: 34 }
-      : { top: 105, bottom: 72, left: 150, right: 150 },
-    maxZoom: 8.8,
+    padding: provincePadding(),
+    maxZoom: 9.8,
     pitch: 20,
     bearing: 0,
     duration
@@ -346,6 +349,22 @@ function createEnhancedContainer() {
   return container;
 }
 
+function addProvinceControl(map) {
+  const container = document.createElement('div');
+  container.className = 'maplibregl-ctrl maplibregl-ctrl-group ssb-province-control';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = 'Viloyat';
+  button.title = 'Buxoro viloyati ko‘rinishi';
+  button.setAttribute('aria-label', 'Buxoro viloyati ko‘rinishiga qaytish');
+  button.addEventListener('click', () => resetProvinceView(650));
+  container.appendChild(button);
+  map.addControl({
+    onAdd() { return container; },
+    onRemove() { container.remove(); }
+  }, 'top-right');
+}
+
 function wireLayerInteraction(map) {
   map.on('mouseenter', 'institution-buildings-3d', () => { map.getCanvas().style.cursor = 'pointer'; });
   map.on('mouseleave', 'institution-buildings-3d', () => { map.getCanvas().style.cursor = ''; });
@@ -367,7 +386,7 @@ function wireLayerInteraction(map) {
     const districtKey = districtButton.dataset.focusDistrict ?? '';
     if (!districtKey) {
       updateEnhancedData(state.bootstrap?.institutions ?? []);
-      fitInstitutions(state.bootstrap?.institutions ?? [], 700);
+      resetProvinceView(700);
       return;
     }
     void fetchJson(`/api/v1/situation-center/districts/${encodeURIComponent(districtKey)}`)
@@ -397,6 +416,7 @@ function initEnhancedMap(bootstrap) {
   });
   state.map = map;
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  addProvinceControl(map);
   map.on('load', () => {
     addSafetyBasemap(map);
     addNativeBuildingExtrusion(map);
@@ -404,7 +424,7 @@ function initEnhancedMap(bootstrap) {
     syncHospitalMarkers(bootstrap.institutions ?? []);
     wireLayerInteraction(map);
     map.on('zoom', updateHospitalMarkerDetail);
-    fitInstitutions(bootstrap.institutions ?? [], 0);
+    resetProvinceView(0);
     document.body.classList.add('institution-3d-active');
   });
   map.on('error', event => {
@@ -432,9 +452,11 @@ window.SSB360Institution3D = {
   institutionVisualHeight,
   hasExactLocation,
   validInstitutions,
-  markerGroups,
+  sharedAnchorGroups,
+  visualOffsetForSharedAnchor,
   updateEnhancedData,
   fitInstitutions,
+  resetProvinceView,
   focusInstitution,
   syncHospitalMarkers
 };
