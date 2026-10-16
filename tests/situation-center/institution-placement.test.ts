@@ -6,14 +6,14 @@ const client = readFileSync(new URL('../../public/js/situation-institution-3d.js
 const db = readFileSync(new URL('../../src/db/index.ts', import.meta.url), 'utf8');
 const catalog = readFileSync(new URL('../../src/catalog.ts', import.meta.url), 'utf8');
 
-test('all 23 institutions use one collision-safe 3D marker placement pipeline', () => {
-  assert.match(client, /function\s+layoutInstitutionPositions\s*\(/);
-  assert.match(client, /syncHospitalMarkers\(layoutInstitutionPositions\(institutions\)\)/);
-  assert.match(client, /locationAccuracy\s*===\s*['"]exact['"]/);
-  assert.match(client, /displayLongitude/);
-  assert.match(client, /displayLatitude/);
-  assert.doesNotMatch(client, /id:\s*['"]institution-status-ring['"]/);
-  assert.doesNotMatch(client, /id:\s*['"]institution-status-glow['"]/);
+test('institution markers never invent display coordinates to avoid collisions', () => {
+  assert.doesNotMatch(client, /APPROXIMATE_DISPLAY_RADIUS/);
+  assert.doesNotMatch(client, /displayLongitude/);
+  assert.doesNotMatch(client, /displayLatitude/);
+  assert.doesNotMatch(client, /displayOffset/);
+  assert.doesNotMatch(client, /Math\.cos\(angle\)/);
+  assert.doesNotMatch(client, /Math\.sin\(angle\)/);
+  assert.match(client, /setLngLat\(\[item\.longitude,\s*item\.latitude\]\)/);
 });
 
 test('overview is constrained to Bukhara region with presentation-safe fit padding', () => {
