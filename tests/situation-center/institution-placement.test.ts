@@ -13,7 +13,7 @@ test('institution markers never invent display coordinates to avoid collisions',
   assert.doesNotMatch(client, /displayOffset/);
   assert.doesNotMatch(client, /Math\.cos\(angle\)/);
   assert.doesNotMatch(client, /Math\.sin\(angle\)/);
-  assert.match(client, /setLngLat\(\[item\.longitude,\s*item\.latitude\]\)/);
+  assert.match(client, /setLngLat\(\[primary\.longitude,\s*primary\.latitude\]\)/);
 });
 
 test('overview is constrained to Bukhara region with presentation-safe fit padding', () => {
