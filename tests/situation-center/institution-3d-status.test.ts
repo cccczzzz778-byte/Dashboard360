@@ -14,28 +14,30 @@ test('situation center loads the enhanced institution 3D map assets', () => {
   assert.match(view, /situation-institution-3d\.js/);
 });
 
-test('institution map renders a stylized 3D building and status rings for every institution', () => {
+test('every institution uses one stylized medical 3D marker with its own status ring', () => {
   const js = readFileSync(clientUrl, 'utf8');
-  assert.match(js, /function\s+institutionBuildingCollection\s*\(/);
-  assert.match(js, /institution-buildings/);
-  assert.match(js, /institution-buildings-3d/);
-  assert.match(js, /fill-extrusion/);
-  assert.match(js, /institution-status-ring/);
-  assert.match(js, /institution-status-glow/);
-  assert.match(js, /#ff5d72/);
-  assert.match(js, /#ffc857/);
-  assert.match(js, /#2ce7b0/);
+  const css = readFileSync(cssUrl, 'utf8');
+  assert.match(js, /function\s+createHospitalMarkerElement\s*\(/);
+  assert.match(js, /ssb-hospital-marker-ring/);
+  assert.match(js, /ssb-hospital-building/);
+  assert.match(js, /syncHospitalMarkers\(layoutInstitutionPositions\(institutions\)\)/);
+  assert.match(css, /\.ssb-hospital-marker-ring/);
+  assert.match(css, /data-tone=["']red["']/);
+  assert.match(css, /#ff5d72/);
+  assert.match(css, /#ffc857/);
+  assert.match(css, /#2ce7b0/);
 });
 
-test('institution 3D layer is derived from institution coordinates and never claims to be a real footprint', () => {
+test('exact institution 3D extrusion is derived from verified coordinates and never claims approximate centers are real footprints', () => {
   const js = readFileSync(clientUrl, 'utf8');
   assert.match(js, /visualizationFootprint/);
+  assert.match(js, /institutions\.filter\(hasExactLocation\)/);
   assert.match(js, /locationAccuracy/);
-  assert.match(js, /Number\.isFinite\(item\.longitude\)/);
-  assert.match(js, /Number\.isFinite\(item\.latitude\)/);
+  assert.match(js, /Number\.isFinite\(item\?\.longitude\)/);
+  assert.match(js, /Number\.isFinite\(item\?\.latitude\)/);
 });
 
-test('enhanced map uses Bukhara region camera and refreshes both point and 3D building sources', () => {
+test('enhanced map uses Bukhara region camera and refreshes both point and exact 3D building sources', () => {
   const js = readFileSync(clientUrl, 'utf8');
   assert.match(js, /BUKHARA_REGION_CAMERA/);
   assert.match(js, /getSource\(['"]institutions-enhanced['"]\)/);

@@ -2,15 +2,18 @@ import * as maplibregl from '/vendor/maplibre/maplibre-gl.mjs';
 
 maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 
-const BUKHARA_REGION_CAMERA = { center: [64.34, 39.82], zoom: 8.35, pitch: 24, bearing: -8 };
+const BUKHARA_REGION_CAMERA = { center: [64.30, 39.78], zoom: 8.15, pitch: 24, bearing: 0 };
+const BUKHARA_REGION_BOUNDS = [[63.45, 39.15], [65.05, 40.35]];
 const FALLBACK_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const BUILDING_HALF_WIDTH = 0.00018;
 const BUILDING_HALF_HEIGHT = 0.00011;
+const APPROXIMATE_DISPLAY_RADIUS = 0.0105;
 
 const state = {
   map: null,
   bootstrap: null,
   institutions: [],
+  displayInstitutions: [],
   hospitalMarkers: []
 };
 
@@ -31,24 +34,61 @@ function institutionVisualHeight(severity, type = '') {
   return isLargeHospital ? Math.min(32, base + 2) : base;
 }
 
+function layoutInstitutionPositions(institutions) {
+  const valid = institutions
+    .filter(item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude))
+    .map(item => ({
+      ...item,
+      displayLongitude: item.longitude,
+      displayLatitude: item.latitude,
+      displayOffset: false
+    }));
+
+  const approximateGroups = new Map();
+  for (const item of valid) {
+    if (item.locationAccuracy === 'exact') continue;
+    const key = `${Number(item.longitude).toFixed(5)}:${Number(item.latitude).toFixed(5)}`;
+    const group = approximateGroups.get(key) ?? [];
+    group.push(item);
+    approximateGroups.set(key, group);
+  }
+
+  for (const group of approximateGroups.values()) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const anchorLat = Number(group[0].latitude);
+    const longitudeScale = Math.max(0.3, Math.cos(anchorLat * Math.PI / 180));
+    const radius = group[0].locationAccuracy === 'city-center'
+      ? APPROXIMATE_DISPLAY_RADIUS
+      : APPROXIMATE_DISPLAY_RADIUS * 1.35;
+
+    group.forEach((item, index) => {
+      const angle = (-Math.PI / 2) + (Math.PI * 2 * index / group.length);
+      item.displayLongitude = Number(item.longitude) + (Math.cos(angle) * radius / longitudeScale);
+      item.displayLatitude = Number(item.latitude) + Math.sin(angle) * radius;
+      item.displayOffset = true;
+    });
+  }
+
+  return valid;
+}
+
 function pointCollection(institutions) {
+  const positioned = layoutInstitutionPositions(institutions);
   return {
     type: 'FeatureCollection',
-    features: institutions.flatMap(item => {
-      if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) return [];
-      return [{
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [item.longitude, item.latitude] },
-        properties: {
-          id: item.id,
-          officialName: item.officialName,
-          districtKey: item.districtKey,
-          type: item.type,
-          riskTone: riskTone(item.risk?.severity),
-          locationAccuracy: item.locationAccuracy ?? 'unknown'
-        }
-      }];
-    })
+    features: positioned.map(item => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [item.displayLongitude, item.displayLatitude] },
+      properties: {
+        id: item.id,
+        officialName: item.officialName,
+        districtKey: item.districtKey,
+        type: item.type,
+        locationAccuracy: item.locationAccuracy ?? 'unknown',
+        displayOffset: Boolean(item.displayOffset)
+      }
+    }))
   };
 }
 
@@ -65,9 +105,9 @@ function visualizationFootprint(longitude, latitude) {
 function institutionBuildingCollection(institutions) {
   return {
     type: 'FeatureCollection',
-    features: institutions.filter(hasExactLocation).flatMap(item => {
+    features: institutions.filter(hasExactLocation).map(item => {
       const severity = item.risk?.severity ?? 'unavailable';
-      return [{
+      return {
         type: 'Feature',
         geometry: {
           type: 'Polygon',
@@ -84,18 +124,9 @@ function institutionBuildingCollection(institutions) {
           visualizationFootprint: true,
           visualizationHeight: institutionVisualHeight(severity, item.type)
         }
-      }];
+      };
     })
   };
-}
-
-function statusColorExpression() {
-  return ['match', ['get', 'riskTone'],
-    'red', '#ff5d72',
-    'amber', '#ffc857',
-    'green', '#2ce7b0',
-    '#35d8ff'
-  ];
 }
 
 function addSafetyBasemap(map) {
@@ -115,11 +146,11 @@ function addSafetyBasemap(map) {
       type: 'raster',
       source: 'ssb-safety-basemap',
       paint: {
-        'raster-opacity': 0.90,
-        'raster-saturation': -0.18,
-        'raster-contrast': 0.03,
+        'raster-opacity': 0.92,
+        'raster-saturation': -0.12,
+        'raster-contrast': 0.02,
         'raster-brightness-min': 0.08,
-        'raster-brightness-max': 0.95
+        'raster-brightness-max': 0.97
       }
     }, beforeId);
   } catch (error) {
@@ -160,7 +191,10 @@ function createHospitalMarkerElement(item) {
   element.className = 'ssb-hospital-marker';
   element.dataset.tone = riskTone(item.risk?.severity);
   element.dataset.institutionId = String(item.id);
-  element.title = item.officialName ?? 'Tibbiyot muassasasi';
+  element.dataset.locationAccuracy = item.locationAccuracy ?? 'unknown';
+  element.title = item.locationAccuracy === 'exact'
+    ? (item.officialName ?? 'Tibbiyot muassasasi')
+    : `${item.officialName ?? 'Tibbiyot muassasasi'} · taxminiy hudud`;
   element.setAttribute('aria-label', `${item.officialName ?? 'Tibbiyot muassasasi'} 3D marker`);
 
   const ring = document.createElement('span');
@@ -185,15 +219,16 @@ function updateHospitalMarkerDetail() {
   for (const entry of state.hospitalMarkers) entry.element.classList.toggle('is-close', close);
 }
 
-function syncHospitalMarkers(institutions) {
+function syncHospitalMarkers(positionedInstitutions) {
   for (const entry of state.hospitalMarkers) entry.marker.remove();
   state.hospitalMarkers = [];
   if (!state.map) return;
 
-  for (const item of institutions.filter(hasExactLocation)) {
+  state.displayInstitutions = positionedInstitutions;
+  for (const item of positionedInstitutions) {
     const element = createHospitalMarkerElement(item);
     const marker = new maplibregl.Marker({ element, anchor: 'bottom' })
-      .setLngLat([item.longitude, item.latitude])
+      .setLngLat([item.displayLongitude, item.displayLatitude])
       .addTo(state.map);
     state.hospitalMarkers.push({ marker, element });
   }
@@ -218,45 +253,8 @@ function addInstitution3dLayers(map, institutions) {
       ],
       'fill-extrusion-height': ['get', 'visualizationHeight'],
       'fill-extrusion-base': 0,
-      'fill-extrusion-opacity': 0.94,
+      'fill-extrusion-opacity': 0.88,
       'fill-extrusion-vertical-gradient': true
-    }
-  });
-
-  map.addLayer({
-    id: 'institution-status-glow',
-    type: 'circle',
-    source: 'institutions-enhanced',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 7, 10, 10, 14, 16],
-      'circle-color': statusColorExpression(),
-      'circle-opacity': 0.13,
-      'circle-blur': 0.72
-    }
-  });
-
-  map.addLayer({
-    id: 'institution-status-ring',
-    type: 'circle',
-    source: 'institutions-enhanced',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 5, 10, 7.5, 14, 12],
-      'circle-color': 'rgba(0,0,0,0)',
-      'circle-stroke-color': statusColorExpression(),
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 14, 3],
-      'circle-stroke-opacity': 0.95
-    }
-  });
-
-  map.addLayer({
-    id: 'institution-enhanced-center',
-    type: 'circle',
-    source: 'institutions-enhanced',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2.3, 14, 4.6],
-      'circle-color': '#f4ffff',
-      'circle-stroke-color': statusColorExpression(),
-      'circle-stroke-width': 1.6
     }
   });
 
@@ -264,19 +262,19 @@ function addInstitution3dLayers(map, institutions) {
     id: 'institution-enhanced-label',
     type: 'symbol',
     source: 'institutions-enhanced',
-    minzoom: 11.3,
+    minzoom: 9.4,
     layout: {
       'text-field': ['get', 'officialName'],
-      'text-size': ['interpolate', ['linear'], ['zoom'], 11.3, 10, 15, 12],
-      'text-offset': [0, 1.35],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 9.4, 9, 14, 12],
+      'text-offset': [0, 2.8],
       'text-anchor': 'top',
       'text-max-width': 18,
       'text-allow-overlap': false
     },
     paint: {
-      'text-color': '#f2ffff',
-      'text-halo-color': 'rgba(0,15,28,.94)',
-      'text-halo-width': 1.6
+      'text-color': '#103348',
+      'text-halo-color': 'rgba(255,255,255,.95)',
+      'text-halo-width': 1.8
     }
   });
 }
@@ -287,36 +285,47 @@ function updateEnhancedData(institutions) {
   const buildingSource = state.map?.getSource('institution-buildings');
   if (pointSource) pointSource.setData(pointCollection(institutions));
   if (buildingSource) buildingSource.setData(institutionBuildingCollection(institutions));
-  syncHospitalMarkers(institutions);
+  syncHospitalMarkers(layoutInstitutionPositions(institutions));
 }
 
 function boundsFor(institutions) {
-  const valid = institutions.filter(item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude));
-  if (!valid.length) return null;
+  const positioned = layoutInstitutionPositions(institutions);
+  if (!positioned.length) return null;
   const bounds = new maplibregl.LngLatBounds();
-  for (const item of valid) bounds.extend([item.longitude, item.latitude]);
+  for (const item of positioned) bounds.extend([item.displayLongitude, item.displayLatitude]);
   return bounds;
 }
 
 function fitInstitutions(institutions, duration = 0) {
   const bounds = boundsFor(institutions);
   if (!bounds || !state.map) return;
+  const compact = window.innerWidth <= 900;
   state.map.fitBounds(bounds, {
-    padding: { top: 85, bottom: 55, left: 55, right: 55 },
-    maxZoom: 9.6,
+    padding: compact
+      ? { top: 72, bottom: 52, left: 34, right: 34 }
+      : { top: 105, bottom: 72, left: 150, right: 150 },
+    maxZoom: 9.35,
     pitch: 24,
-    bearing: -8,
+    bearing: 0,
     duration
   });
 }
 
+function displayInstitution(id) {
+  return state.displayInstitutions.find(row => String(row.id) === String(id))
+    ?? layoutInstitutionPositions(state.bootstrap?.institutions ?? []).find(row => String(row.id) === String(id))
+    ?? null;
+}
+
 function focusInstitution(id) {
   const item = state.bootstrap?.institutions?.find(row => row.id === id) ?? state.institutions.find(row => row.id === id);
-  if (!item || !state.map || !Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) return;
+  const display = displayInstitution(id);
+  if (!item || !display || !state.map) return;
+  const center = [display.displayLongitude, display.displayLatitude];
   if (hasExactLocation(item)) {
-    state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 15.2), pitch: 63, bearing: -20, duration: 850 });
+    state.map.easeTo({ center, zoom: Math.max(state.map.getZoom(), 15.2), pitch: 58, bearing: -16, duration: 850 });
   } else {
-    state.map.easeTo({ center: [item.longitude, item.latitude], zoom: Math.max(state.map.getZoom(), 10.6), pitch: 24, bearing: -8, duration: 700 });
+    state.map.easeTo({ center, zoom: Math.max(state.map.getZoom(), 11.2), pitch: 28, bearing: 0, duration: 700 });
   }
   window.SSB360Situation?.focusInstitution?.(id);
 }
@@ -340,14 +349,12 @@ function createEnhancedContainer() {
 }
 
 function wireLayerInteraction(map) {
-  for (const layerId of ['institution-status-ring', 'institution-enhanced-center', 'institution-buildings-3d']) {
-    map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
-    map.on('click', layerId, event => {
-      const id = event.features?.[0]?.properties?.id;
-      if (id) focusInstitution(String(id));
-    });
-  }
+  map.on('mouseenter', 'institution-buildings-3d', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'institution-buildings-3d', () => { map.getCanvas().style.cursor = ''; });
+  map.on('click', 'institution-buildings-3d', event => {
+    const id = event.features?.[0]?.properties?.id;
+    if (id) focusInstitution(String(id));
+  });
 
   document.addEventListener('click', event => {
     const target = event.target instanceof Element ? event.target : null;
@@ -385,9 +392,10 @@ function initEnhancedMap(bootstrap) {
     container,
     style,
     ...BUKHARA_REGION_CAMERA,
+    maxBounds: BUKHARA_REGION_BOUNDS,
     antialias: true,
     attributionControl: true,
-    maxPitch: 75
+    maxPitch: 70
   });
   state.map = map;
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
@@ -395,7 +403,7 @@ function initEnhancedMap(bootstrap) {
     addSafetyBasemap(map);
     addNativeBuildingExtrusion(map);
     addInstitution3dLayers(map, bootstrap.institutions ?? []);
-    syncHospitalMarkers(bootstrap.institutions ?? []);
+    syncHospitalMarkers(layoutInstitutionPositions(bootstrap.institutions ?? []));
     wireLayerInteraction(map);
     map.on('zoom', updateHospitalMarkerDetail);
     fitInstitutions(bootstrap.institutions ?? [], 0);
@@ -425,6 +433,7 @@ window.SSB360Institution3D = {
   institutionBuildingCollection,
   institutionVisualHeight,
   hasExactLocation,
+  layoutInstitutionPositions,
   updateEnhancedData,
   fitInstitutions,
   focusInstitution,
