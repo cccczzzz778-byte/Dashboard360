@@ -21,9 +21,9 @@ test('institutions use compact medical 3D markers on their stored coordinates', 
   assert.match(js, /ssb-hospital-marker-ring/);
   assert.match(js, /ssb-hospital-building/);
   assert.match(js, /syncHospitalMarkers\(institutions\)/);
-  assert.match(js, /setLngLat\(\[primary\.longitude,\s*primary\.latitude\]\)/);
+  assert.match(js, /setLngLat\(\[item\.longitude,\s*item\.latitude\]\)/);
   assert.match(css, /\.ssb-hospital-marker-ring/);
-  assert.match(css, /\.ssb-hospital-count/);
+  assert.doesNotMatch(css, /\.ssb-hospital-count/);
   assert.match(css, /\.ssb-hospital-marker\s*\{[\s\S]*width:\s*30px[\s\S]*height:\s*36px/);
   assert.match(css, /data-tone=["']red["']/);
   assert.match(css, /#ff5d72/);
