@@ -16,10 +16,10 @@ test('institution 3D markers use realistic medical-building dimensions instead o
   assert.match(js, /BUILDING_HALF_HEIGHT\s*=\s*0\.00011/);
 });
 
-test('all institutions keep visible 3D medical markers and status rings province-wide while verified footprints extrude after useful zoom', () => {
+test('all institutions keep visible medical markers and verified footprints extrude only after close zoom', () => {
   const js = readFileSync(clientUrl, 'utf8');
   const css = readFileSync(cssUrl, 'utf8');
-  assert.match(js, /id:\s*'institution-buildings-3d'[\s\S]*minzoom:\s*11\.5/);
+  assert.match(js, /id:\s*'institution-buildings-3d'[\s\S]*minzoom:\s*11\.8/);
   assert.match(js, /function\s+syncHospitalMarkers\s*\(/);
   assert.match(css, /\.ssb-hospital-marker-ring/);
   assert.match(js, /zoom:\s*Math\.max\(state\.map\.getZoom\(\),\s*15\.2\)/);

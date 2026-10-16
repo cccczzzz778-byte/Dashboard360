@@ -20,10 +20,14 @@ test('schema upgrades old centroid coordinates when catalog location becomes exa
   assert.match(db, /longitude\s*=\s*case/i);
 });
 
-test('province overview keeps approximate district centers as display-only markers, not real 3D footprints', () => {
+test('province overview keeps approximate centers honest and never turns them into invented map positions', () => {
   assert.match(map, /function\s+hasExactLocation\s*\(/);
   assert.match(map, /institutions\.filter\(hasExactLocation\)/);
-  assert.match(map, /function\s+layoutInstitutionPositions\s*\(/);
-  assert.doesNotMatch(map, /padding:\s*\{\s*top:\s*115,\s*bottom:\s*70,\s*left:\s*340,\s*right:\s*340\s*\}/);
-  assert.match(map, /pitch:\s*24/);
+  assert.match(map, /function\s+markerGroups\s*\(/);
+  assert.doesNotMatch(map, /APPROXIMATE_DISPLAY_RADIUS/);
+  assert.doesNotMatch(map, /displayLongitude/);
+  assert.doesNotMatch(map, /displayLatitude/);
+  assert.doesNotMatch(map, /Math\.cos\(angle\)/);
+  assert.doesNotMatch(map, /Math\.sin\(angle\)/);
+  assert.match(map, /pitch:\s*20/);
 });
