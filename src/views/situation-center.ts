@@ -9,7 +9,7 @@ export function situationCenterHtml() {
   <link rel="stylesheet" href="/vendor/maplibre/maplibre-gl.css">
   <link rel="stylesheet" href="/css/situation-center.css?v=20261015-5">
   <link rel="stylesheet" href="/css/situation-reference.css?v=20261015-5">
-  <link rel="stylesheet" href="/css/situation-institution-3d.css?v=20261016-1">
+  <link rel="stylesheet" href="/css/situation-institution-3d.css?v=20261016-2">
 </head>
 <body class="situation-center-page">
   <main class="situation-shell">
@@ -52,7 +52,7 @@ export function situationCenterHtml() {
   </main>
   <script type="module" src="/js/situation-center.js?v=20261015-5"></script>
   <script type="module" src="/js/situation-reference.js?v=20261015-5"></script>
-  <script type="module" src="/js/situation-institution-3d.js?v=20261016-1"></script>
+  <script type="module" src="/js/situation-institution-3d.js?v=20261016-2"></script>
 </body>
 </html>`;
 }
