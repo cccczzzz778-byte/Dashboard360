@@ -2,7 +2,7 @@ import * as maplibregl from '/vendor/maplibre/maplibre-gl.mjs';
 
 maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 
-const BUKHARA_REGION_CAMERA = { center: [64.30, 39.78], zoom: 8.15, pitch: 18, bearing: 0 };
+const BUKHARA_REGION_CAMERA = { center: [64.30, 39.78], zoom: 8.15, pitch: 24, bearing: 0 };
 const BUKHARA_REGION_BOUNDS = [[63.45, 39.15], [65.05, 40.35]];
 const FALLBACK_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const BUILDING_HALF_WIDTH = 0.00018;
@@ -243,7 +243,7 @@ function addInstitution3dLayers(map, institutions) {
     id: 'institution-buildings-3d',
     type: 'fill-extrusion',
     source: 'institution-buildings',
-    minzoom: 12.5,
+    minzoom: 11.5,
     paint: {
       'fill-extrusion-color': ['match', ['get', 'riskTone'],
         'red', '#d83d55',
@@ -305,7 +305,7 @@ function fitInstitutions(institutions, duration = 0) {
       ? { top: 72, bottom: 52, left: 34, right: 34 }
       : { top: 105, bottom: 72, left: 150, right: 150 },
     maxZoom: 9.35,
-    pitch: 18,
+    pitch: 24,
     bearing: 0,
     duration
   });
