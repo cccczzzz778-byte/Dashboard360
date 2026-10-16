@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const clientUrl = new URL('../../public/js/situation-institution-3d.js', import.meta.url);
+const cssUrl = new URL('../../public/css/situation-institution-3d.css', import.meta.url);
 
 test('institution 3D markers use realistic medical-building dimensions instead of giant towers', () => {
   const js = readFileSync(clientUrl, 'utf8');
@@ -15,10 +16,12 @@ test('institution 3D markers use realistic medical-building dimensions instead o
   assert.match(js, /BUILDING_HALF_HEIGHT\s*=\s*0\.00011/);
 });
 
-test('3D institution buildings appear only after useful zoom while status rings remain visible province-wide', () => {
+test('all institutions keep visible 3D medical markers and status rings province-wide while verified footprints extrude after useful zoom', () => {
   const js = readFileSync(clientUrl, 'utf8');
+  const css = readFileSync(cssUrl, 'utf8');
   assert.match(js, /id:\s*'institution-buildings-3d'[\s\S]*minzoom:\s*11\.5/);
-  assert.match(js, /id:\s*'institution-status-ring'[\s\S]*source:\s*'institutions-enhanced'/);
+  assert.match(js, /function\s+syncHospitalMarkers\s*\(/);
+  assert.match(css, /\.ssb-hospital-marker-ring/);
   assert.match(js, /zoom:\s*Math\.max\(state\.map\.getZoom\(\),\s*15\.2\)/);
 });
 
